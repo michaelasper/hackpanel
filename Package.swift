@@ -5,8 +5,8 @@ import PackageDescription
 let package = Package(
     name: "HackPanel",
     platforms: [
-        // “Mac Tahoe” baseline; adjust as needed. (Xcode will map this to the nearest macOS SDK.)
-        .macOS(.v15)
+        // "macOS 14" baseline; adjust as needed. (Xcode will map this to the nearest macOS SDK.)
+        .macOS(.v14)
     ],
     products: [
         .executable(name: "HackPanelApp", targets: ["HackPanelApp"]),
