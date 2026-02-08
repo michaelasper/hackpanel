@@ -2,6 +2,12 @@ import SwiftUI
 import HackPanelGateway
 
 struct RootView: View {
+    private static let errorTimeFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.dateStyle = .none
+        df.timeStyle = .medium
+        return df
+    }()
     enum Route: Hashable {
         case overview
         case nodes
@@ -49,10 +55,7 @@ struct RootView: View {
         let state = gateway.state
 
         let timestampText: String? = gateway.lastErrorAt.map { date in
-            let df = DateFormatter()
-            df.dateStyle = .none
-            df.timeStyle = .medium
-            return "Last error at \(df.string(from: date))"
+            "Last error at \(Self.errorTimeFormatter.string(from: date))"
         }
 
         let secondsSinceError: TimeInterval? = gateway.lastErrorAt.map { Date().timeIntervalSince($0) }

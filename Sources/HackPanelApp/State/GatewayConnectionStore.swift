@@ -50,6 +50,9 @@ final class GatewayConnectionStore: ObservableObject {
         do {
             let value = try await work()
             state = .connected
+            // Clear stale error metadata after a successful call.
+            lastErrorMessage = nil
+            lastErrorAt = nil
             return value
         } catch {
             record(error: error)
