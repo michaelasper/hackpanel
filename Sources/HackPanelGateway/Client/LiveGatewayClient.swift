@@ -8,7 +8,6 @@ import Foundation
 ///   for common local/dev setups and can be expanded later.
 private enum Constants {
     static let protocolVersion = 3
-
     static let clientId = "hackpanel"
     static let clientVersion = "0.1"
     static let clientPlatform = "ios"
@@ -19,7 +18,7 @@ private enum Constants {
 
     static let connectTimeoutSeconds: TimeInterval = 5
     static let requestTimeoutSeconds: TimeInterval = 10
-    static let perReceiveTimeoutSeconds: TimeInterval = 2
+    static let receiveTimeoutSeconds: TimeInterval = 10
 }
 
 public struct LiveGatewayClient: GatewayClient {
@@ -68,7 +67,13 @@ private struct GatewayRPC: Sendable {
     let configuration: GatewayConfiguration
 
     func call<P: Encodable, R: Decodable>(method: String, params: P) async throws -> R {
-        let wsURL = try configuration.baseURL.asWebSocketURL()
+        let wsURL: URL
+        do {
+            wsURL = try configuration.baseURL.asWebSocketURL()
+        } catch {
+            throw GatewayClientError.invalidBaseURL(configuration.baseURL.absoluteString)
+        }
+
         let session = URLSession(configuration: .ephemeral)
         let task = session.webSocketTask(with: wsURL)
         task.resume()
@@ -97,20 +102,23 @@ private struct GatewayRPC: Sendable {
         )
         try await sendJSONFrame(task: task, frame: connect)
 
-        // 2) Wait for hello-ok with an overall timeout to avoid infinite hangs.
-        let hello: GatewayResponseFrame<HelloOK> = try await waitForResponse(
-            task: task,
-            id: connectId,
-            operation: "connect/hello",
-            timeoutSeconds: Constants.connectTimeoutSeconds,
-            decodeAs: GatewayResponseFrame<HelloOK>.self
-        )
-        if hello.ok != true {
-            throw GatewayClientError.gatewayError(
-                code: hello.error?.code,
-                message: hello.error?.message ?? hello.message,
-                details: hello.error?.details
-            )
+        // 2) Wait for hello-ok.
+        try await withTimeout(Constants.connectTimeoutSeconds, operation: "connecting to Gateway") {
+            while true {
+                let any = try await receiveJSONFrame(task: task)
+                if let res: GatewayResponseFrame<HelloOK> = try? decode(any, as: GatewayResponseFrame<HelloOK>.self),
+                   res.type == "res",
+                   res.id == connectId {
+                    if res.ok == true {
+                        return ()
+                    }
+                    throw GatewayClientError.gatewayError(
+                        code: res.error?.code,
+                        message: res.error?.message ?? res.message,
+                        details: res.error?.details
+                    )
+                }
+            }
         }
 
         // 3) Send actual request.
@@ -118,87 +126,56 @@ private struct GatewayRPC: Sendable {
         let req = GatewayFrame.makeReq(id: id, method: method, params: params)
         try await sendJSONFrame(task: task, frame: req)
 
-        // 4) Await response (bounded).
-        let res: GatewayResponseFrame<R> = try await waitForResponse(
-            task: task,
-            id: id,
-            operation: "rpc(\(method))",
-            timeoutSeconds: Constants.requestTimeoutSeconds,
-            decodeAs: GatewayResponseFrame<R>.self
-        )
-
-        if res.ok == true, let payload = res.payload {
-            return payload
-        }
-
-        throw GatewayClientError.gatewayError(
-            code: res.error?.code,
-            message: res.error?.message ?? res.message,
-            details: res.error?.details
-        )
-    }
-
-    private func receiveJSONFrame(task: URLSessionWebSocketTask, timeoutSeconds: Double) async throws -> Any {
-        try await withTimeout(seconds: timeoutSeconds, operation: "receive-frame") {
-            let message = try await task.receive()
-            switch message {
-            case .string(let str):
-                let data = Data(str.utf8)
-                return try JSONSerialization.jsonObject(with: data)
-            case .data(let data):
-                return try JSONSerialization.jsonObject(with: data)
-            @unknown default:
-                throw GatewayClientError.unexpectedFrame
-            }
-        }
-    }
-
-    private func waitForResponse<T: Decodable & Sendable>(
-        task: URLSessionWebSocketTask,
-        id: String,
-        operation: String,
-        timeoutSeconds: Double,
-        decodeAs: T.Type
-    ) async throws -> T {
-        let deadline = Date().addingTimeInterval(timeoutSeconds)
-        while true {
-            try Task.checkCancellation()
-
-            let remaining = deadline.timeIntervalSinceNow
-            if remaining <= 0 {
-                throw GatewayClientError.timeout(operation: operation)
-            }
-
-            // Bound each receive so cancellation can cut through even if the socket stays silent.
-            let any = try await receiveJSONFrame(task: task, timeoutSeconds: min(Constants.perReceiveTimeoutSeconds, remaining))
-            if let res = try? decode(any, as: decodeAs) {
-                // Only return frames that match our request id. Ignore other events/responses.
-                if let maybeRes = res as? any GatewayResponseFrameProtocol,
-                   maybeRes.type == "res",
-                   maybeRes.id == id {
-                    return res
+        // 4) Await response.
+        return try await withTimeout(Constants.requestTimeoutSeconds, operation: "waiting for \(method) response") {
+            while true {
+                let any = try await receiveJSONFrame(task: task)
+                if let res: GatewayResponseFrame<R> = try? decode(any, as: GatewayResponseFrame<R>.self),
+                   res.type == "res",
+                   res.id == id {
+                    if res.ok == true, let payload = res.payload {
+                        return payload
+                    }
+                    throw GatewayClientError.gatewayError(
+                        code: res.error?.code,
+                        message: res.error?.message ?? res.message,
+                        details: res.error?.details
+                    )
                 }
             }
         }
     }
 
-    private func withTimeout<T>(
-        seconds: Double,
+    private func receiveJSONFrame(task: URLSessionWebSocketTask) async throws -> Any {
+        let message = try await withTimeout(Constants.receiveTimeoutSeconds, operation: "waiting for Gateway frame") {
+            try await task.receive()
+        }
+        switch message {
+        case .string(let str):
+            let data = Data(str.utf8)
+            return try JSONSerialization.jsonObject(with: data)
+        case .data(let data):
+            return try JSONSerialization.jsonObject(with: data)
+        @unknown default:
+            throw GatewayClientError.unexpectedFrame
+        }
+    }
+
+    private func withTimeout<T: Sendable>(
+        _ seconds: TimeInterval,
         operation: String,
-        _ body: @Sendable @escaping () async throws -> T
+        _ work: @Sendable @escaping () async throws -> T
     ) async throws -> T {
         try await withThrowingTaskGroup(of: T.self) { group in
             group.addTask {
-                try await body()
+                try await work()
             }
             group.addTask {
                 try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                throw GatewayClientError.timeout(operation: operation)
+                throw GatewayClientError.timedOut(operation: operation)
             }
-
-            let result = try await group.next()!
-            group.cancelAll()
-            return result
+            defer { group.cancelAll() }
+            return try await group.next()!
         }
     }
 
@@ -278,6 +255,7 @@ private enum JSONValue: Decodable, Sendable {
             if let n = try? c.decode(Double.self) { self = .number(n); return }
             if let s = try? c.decode(String.self) { self = .string(s); return }
         }
+
         if var a = try? decoder.unkeyedContainer() {
             var arr: [JSONValue] = []
             while !a.isAtEnd { arr.append(try a.decode(JSONValue.self)) }
