@@ -7,10 +7,10 @@ final class NodesViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
 
-    private let client: any GatewayClient
+    private let gateway: GatewayConnectionStore
 
-    init(client: any GatewayClient) {
-        self.client = client
+    init(gateway: GatewayConnectionStore) {
+        self.gateway = gateway
     }
 
     func refresh() async {
@@ -19,7 +19,7 @@ final class NodesViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            nodes = try await client.fetchNodes()
+            nodes = try await gateway.fetchNodes()
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
         }
@@ -29,8 +29,8 @@ final class NodesViewModel: ObservableObject {
 struct NodesView: View {
     @StateObject private var model: NodesViewModel
 
-    init(client: any GatewayClient) {
-        _model = StateObject(wrappedValue: NodesViewModel(client: client))
+    init(gateway: GatewayConnectionStore) {
+        _model = StateObject(wrappedValue: NodesViewModel(gateway: gateway))
     }
 
     var body: some View {

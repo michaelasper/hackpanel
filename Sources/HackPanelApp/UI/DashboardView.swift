@@ -8,10 +8,10 @@ final class DashboardViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
 
-    private let client: any GatewayClient
+    private let gateway: GatewayConnectionStore
 
-    init(client: any GatewayClient) {
-        self.client = client
+    init(gateway: GatewayConnectionStore) {
+        self.gateway = gateway
     }
 
     func refresh() async {
@@ -20,11 +20,13 @@ final class DashboardViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            async let s = client.fetchStatus()
-            async let n = client.fetchNodes()
+            async let s = gateway.fetchStatus()
+            async let n = gateway.fetchNodes()
             status = try await s
             nodes = try await n
         } catch {
+            // Keep local surface area (so the page can show errors inline), but also let the
+            // global banner track connection failures via GatewayConnectionStore.
             errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
         }
     }
@@ -33,8 +35,8 @@ final class DashboardViewModel: ObservableObject {
 struct DashboardView: View {
     @StateObject private var model: DashboardViewModel
 
-    init(client: any GatewayClient) {
-        _model = StateObject(wrappedValue: DashboardViewModel(client: client))
+    init(gateway: GatewayConnectionStore) {
+        _model = StateObject(wrappedValue: DashboardViewModel(gateway: gateway))
     }
 
     var body: some View {
