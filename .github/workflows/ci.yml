@@ -10,14 +10,6 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-
-      # GitHub-hosted macOS runners may lag the Swift tools version declared in Package.swift.
-      # Install the toolchain we need explicitly.
-      - name: Set up Swift
-        uses: swift-actions/setup-swift@v2
-        with:
-          swift-version: "6.2"
-
       - name: Swift version
         run: swift --version
 
