@@ -1,26 +1,43 @@
 import SwiftUI
+import AppKit
 
 struct ConnectionBannerData: Equatable, Sendable {
     var stateText: String
+
+    /// Short, user-facing summary (line-limited in the banner).
     var message: String?
+
+    /// Full error text (copyable / viewable). If nil, we fall back to `message`.
+    var fullMessage: String?
+
+    /// e.g. "Last error: 5:31:22 PM"
     var timestampText: String?
 
     var color: Color
     var icon: String
 
+    /// Whether the banner should offer an "Open Settings" affordance.
+    var showsOpenSettings: Bool = false
+
     static func connected() -> ConnectionBannerData {
         ConnectionBannerData(
             stateText: "Connected",
             message: nil,
+            fullMessage: nil,
             timestampText: nil,
             color: .green,
-            icon: "checkmark.circle.fill"
+            icon: "checkmark.circle.fill",
+            showsOpenSettings: false
         )
     }
 }
 
 struct ConnectionBannerView: View {
     let data: ConnectionBannerData
+
+    var onOpenSettings: (() -> Void)? = nil
+
+    @State private var isShowingDetails: Bool = false
 
     var body: some View {
         HStack(spacing: 10) {
@@ -40,13 +57,27 @@ struct ConnectionBannerView: View {
                     .truncationMode(.tail)
             }
 
+            Spacer()
+
             if let ts = data.timestampText {
-                Spacer()
                 Text(ts)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
-            } else {
-                Spacer()
+            }
+
+            if hasDetailsOrCopy {
+                Button("Details") { isShowingDetails = true }
+                    .buttonStyle(.borderless)
+                    .font(.caption)
+                    .popover(isPresented: $isShowingDetails) {
+                        errorDetailsView
+                    }
+            }
+
+            if data.showsOpenSettings, let onOpenSettings {
+                Button("Open Settings") { onOpenSettings() }
+                    .buttonStyle(.link)
+                    .font(.caption)
             }
         }
         .padding(.horizontal, 14)
@@ -55,6 +86,41 @@ struct ConnectionBannerView: View {
         .overlay(Rectangle().frame(height: 1).foregroundStyle(.separator), alignment: .bottom)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var hasDetailsOrCopy: Bool {
+        let full = (data.fullMessage ?? data.message) ?? ""
+        return !full.isEmpty
+    }
+
+    private var errorDetailsView: some View {
+        let text = (data.fullMessage ?? data.message) ?? ""
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Gateway Error")
+                    .font(.headline)
+                Spacer()
+                Button("Copy") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(text, forType: .string)
+                }
+            }
+
+            ScrollView {
+                Text(text)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .font(.system(.body, design: .monospaced))
+            }
+            .frame(width: 520, height: 220)
+
+            if let ts = data.timestampText {
+                Text(ts)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
     }
 
     private var accessibilityLabel: String {
