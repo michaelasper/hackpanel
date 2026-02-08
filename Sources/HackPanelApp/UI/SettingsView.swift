@@ -15,7 +15,7 @@ struct SettingsView: View {
                 SecureField("Token", text: $gatewayToken)
                     .textFieldStyle(.roundedBorder)
 
-                Text("Used for upcoming live Gateway wiring. For now the app uses mock data.")
+                Text("Used to fetch live status and nodes from OpenClaw Gateway. Token is optional unless your gateway requires it.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

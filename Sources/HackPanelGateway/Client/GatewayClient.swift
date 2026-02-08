@@ -17,11 +17,14 @@ public protocol GatewayClient: Sendable {
 
 public enum GatewayClientError: Error, LocalizedError, Sendable {
     case notImplemented
+    case timeout(operation: String)
 
     public var errorDescription: String? {
         switch self {
         case .notImplemented:
             return "Not implemented yet."
+        case .timeout(let operation):
+            return "Timed out while waiting for gateway during: \(operation)"
         }
     }
 }

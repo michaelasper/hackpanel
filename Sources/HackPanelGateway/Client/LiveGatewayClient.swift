@@ -31,9 +31,15 @@ public struct LiveGatewayClient: GatewayClient {
             .items
             ?? []
 
-        return entries.map { entry in
-            NodeSummary(
-                id: entry.id ?? entry.nodeId ?? entry.deviceId ?? UUID().uuidString,
+        return entries.enumerated().map { offset, entry in
+            let stableFallbackID: String = {
+                if let host = entry.host, !host.isEmpty { return "host:\(host)" }
+                if let name = entry.name, !name.isEmpty { return "name:\(name)" }
+                return "unknown:\(offset)"
+            }()
+
+            return NodeSummary(
+                id: entry.id ?? entry.nodeId ?? entry.deviceId ?? stableFallbackID,
                 name: entry.name ?? entry.host ?? entry.id ?? entry.nodeId ?? "(unknown)",
                 state: (entry.connected ?? false) ? .online : .offline,
                 lastSeenAt: entry.lastSeenAt
@@ -54,11 +60,9 @@ private struct GatewayRPC: Sendable {
         task.resume()
         defer { task.cancel(with: .normalClosure, reason: nil) }
 
-        // 1) Read the server's pre-connect challenge event (if present).
-        // Some gateway setups may send it immediately; if not, we proceed to connect.
-        _ = try? await receiveJSONFrame(task: task)
-
-        // 2) Send connect request.
+        // 1) Send connect request promptly.
+        // The Gateway may send an optional pre-connect "challenge" event, but waiting on it can hang
+        // when the server stays silent. We send connect immediately and ignore any unrelated frames.
         let connectId = UUID().uuidString
         let connect = GatewayFrame.makeReq(
             id: connectId,
@@ -74,17 +78,16 @@ private struct GatewayRPC: Sendable {
         )
         try await sendJSONFrame(task: task, frame: connect)
 
-        // Wait for hello-ok.
-        while true {
-            let any = try await receiveJSONFrame(task: task)
-            if let res: GatewayResponseFrame<HelloOK> = try? decode(any, as: GatewayResponseFrame<HelloOK>.self),
-               res.type == "res",
-               res.id == connectId {
-                if res.ok != true {
-                    throw GatewayClientError.notImplemented
-                }
-                break
-            }
+        // 2) Wait for hello-ok with an overall timeout to avoid infinite hangs.
+        let hello: GatewayResponseFrame<HelloOK> = try await waitForResponse(
+            task: task,
+            id: connectId,
+            operation: "connect/hello",
+            timeoutSeconds: 5,
+            decodeAs: GatewayResponseFrame<HelloOK>.self
+        )
+        if hello.ok != true {
+            throw GatewayClientError.notImplemented
         }
 
         // 3) Send actual request.
@@ -92,30 +95,78 @@ private struct GatewayRPC: Sendable {
         let req = GatewayFrame.makeReq(id: id, method: method, params: params)
         try await sendJSONFrame(task: task, frame: req)
 
-        // 4) Await response.
-        while true {
-            let any = try await receiveJSONFrame(task: task)
-            if let res: GatewayResponseFrame<R> = try? decode(any, as: GatewayResponseFrame<R>.self),
-               res.type == "res",
-               res.id == id {
-                if res.ok == true, let payload = res.payload {
-                    return payload
-                }
+        // 4) Await response (bounded).
+        let res: GatewayResponseFrame<R> = try await waitForResponse(
+            task: task,
+            id: id,
+            operation: "rpc(\(method))",
+            timeoutSeconds: 10,
+            decodeAs: GatewayResponseFrame<R>.self
+        )
+
+        if res.ok == true, let payload = res.payload {
+            return payload
+        }
+        throw GatewayClientError.notImplemented
+    }
+
+    private func receiveJSONFrame(task: URLSessionWebSocketTask, timeoutSeconds: Double) async throws -> Any {
+        try await withTimeout(seconds: timeoutSeconds, operation: "receive-frame") {
+            let message = try await task.receive()
+            switch message {
+            case .string(let str):
+                let data = Data(str.utf8)
+                return try JSONSerialization.jsonObject(with: data)
+            case .data(let data):
+                return try JSONSerialization.jsonObject(with: data)
+            @unknown default:
                 throw GatewayClientError.notImplemented
             }
         }
     }
 
-    private func receiveJSONFrame(task: URLSessionWebSocketTask) async throws -> Any {
-        let message = try await task.receive()
-        switch message {
-        case .string(let str):
-            let data = Data(str.utf8)
-            return try JSONSerialization.jsonObject(with: data)
-        case .data(let data):
-            return try JSONSerialization.jsonObject(with: data)
-        @unknown default:
-            throw GatewayClientError.notImplemented
+    private func waitForResponse<T: Decodable & Sendable>(
+        task: URLSessionWebSocketTask,
+        id: String,
+        operation: String,
+        timeoutSeconds: Double,
+        decodeAs: T.Type
+    ) async throws -> T {
+        let deadline = Date().addingTimeInterval(timeoutSeconds)
+        while true {
+            try Task.checkCancellation()
+
+            let remaining = deadline.timeIntervalSinceNow
+            if remaining <= 0 {
+                throw GatewayClientError.timeout(operation: operation)
+            }
+
+            // Bound each receive so cancellation can cut through even if the socket stays silent.
+            let any = try await receiveJSONFrame(task: task, timeoutSeconds: min(2.0, remaining))
+            if let res = try? decode(any, as: decodeAs) {
+                // Only return frames that match our request id. Ignore other events/responses.
+                if let maybeRes = res as? any GatewayResponseFrameProtocol,
+                   maybeRes.type == "res",
+                   maybeRes.id == id {
+                    return res
+                }
+            }
+        }
+    }
+
+    private func withTimeout<T>(seconds: Double, operation: String, _ body: @Sendable @escaping () async throws -> T) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await body()
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                throw GatewayClientError.timeout(operation: operation)
+            }
+
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
         }
     }
 
@@ -155,7 +206,12 @@ private enum GatewayFrame: Codable, Sendable {
     }
 }
 
-private struct GatewayResponseFrame<P: Decodable & Sendable>: Decodable, Sendable {
+private protocol GatewayResponseFrameProtocol {
+    var type: String { get }
+    var id: String { get }
+}
+
+private struct GatewayResponseFrame<P: Decodable & Sendable>: Decodable, Sendable, GatewayResponseFrameProtocol {
     var type: String
     var id: String
     var ok: Bool?
