@@ -1,14 +1,21 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @AppStorage("gatewayBaseURL") private var gatewayBaseURL: String = "http://127.0.0.1:8787"
+    // NOTE: OpenClaw Gateway multiplexes WS + HTTP on the same port (default 18789).
+    // HackPanel will eventually use the Gateway WebSocket protocol (not plain REST).
+    @AppStorage("gatewayBaseURL") private var gatewayBaseURL: String = "http://127.0.0.1:18789"
+    @AppStorage("gatewayToken") private var gatewayToken: String = ""
 
     var body: some View {
         Form {
             Section("Gateway") {
                 TextField("Base URL", text: $gatewayBaseURL)
                     .textFieldStyle(.roundedBorder)
-                Text("Remote hosts are allowed. For now this is used only for future live API wiring.")
+
+                SecureField("Token", text: $gatewayToken)
+                    .textFieldStyle(.roundedBorder)
+
+                Text("Used for upcoming live Gateway wiring. For now the app uses mock data.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -22,3 +29,4 @@ struct SettingsView: View {
         .padding(24)
     }
 }
+
