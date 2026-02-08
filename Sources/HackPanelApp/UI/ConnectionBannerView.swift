@@ -10,7 +10,7 @@ struct ConnectionBannerData: Equatable, Sendable {
     /// Full error text (copyable / viewable). If nil, we fall back to `message`.
     var fullMessage: String?
 
-    /// e.g. "Last error: 5:31:22 PM"
+    /// e.g. "Last error at 5:31:22 PM"
     var timestampText: String?
 
     var color: Color
@@ -86,24 +86,37 @@ struct ConnectionBannerView: View {
         .overlay(Rectangle().frame(height: 1).foregroundStyle(.separator), alignment: .bottom)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
+        .contextMenu {
+            if hasDetailsOrCopy {
+                Button("Copy Error") { copyToPasteboard(errorText) }
+            }
+            if data.showsOpenSettings, let onOpenSettings {
+                Button("Open Settings") { onOpenSettings() }
+            }
+        }
+    }
+
+    private var errorText: String {
+        (data.fullMessage ?? data.message) ?? ""
+    }
+
+    private func copyToPasteboard(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
     }
 
     private var hasDetailsOrCopy: Bool {
-        let full = (data.fullMessage ?? data.message) ?? ""
-        return !full.isEmpty
+        !errorText.isEmpty
     }
 
     private var errorDetailsView: some View {
-        let text = (data.fullMessage ?? data.message) ?? ""
+        let text = errorText
         return VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Gateway Error")
                     .font(.headline)
                 Spacer()
-                Button("Copy") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(text, forType: .string)
-                }
+                Button("Copy") { copyToPasteboard(text) }
             }
 
             ScrollView {

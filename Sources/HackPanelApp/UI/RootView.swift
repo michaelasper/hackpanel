@@ -52,7 +52,7 @@ struct RootView: View {
             let df = DateFormatter()
             df.dateStyle = .none
             df.timeStyle = .medium
-            return "Last error: \(df.string(from: date))"
+            return "Last error at \(df.string(from: date))"
         }
 
         let secondsSinceError: TimeInterval? = gateway.lastErrorAt.map { Date().timeIntervalSince($0) }
@@ -70,14 +70,14 @@ struct RootView: View {
                 if let s = secondsSinceError, s < 15 {
                     return ("wifi.exclamationmark", .orange)
                 }
-                return ("wifi.slash", .red)
+                return ("wifi.exclamationmark", .red)
             }
         }()
 
         let shortMessage: String? = {
             switch state {
             case .authFailed:
-                return "Authentication failed — check token in Settings"
+                return "Authentication failed — open Settings to update your token"
             default:
                 return gateway.lastErrorMessage
             }
