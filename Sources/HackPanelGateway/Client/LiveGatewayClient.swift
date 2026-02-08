@@ -6,6 +6,22 @@ import Foundation
 /// - This intentionally keeps the surface area tiny: connect + one-shot RPC calls.
 /// - We do **not** currently implement device identity signing/pairing. This is expected to work
 ///   for common local/dev setups and can be expanded later.
+private enum Constants {
+    static let protocolVersion = 3
+
+    static let clientId = "hackpanel"
+    static let clientVersion = "0.1"
+    static let clientPlatform = "ios"
+    static let clientMode = "operator"
+
+    static let role = "operator"
+    static let scopes = ["operator.read"]
+
+    static let connectTimeoutSeconds: TimeInterval = 5
+    static let requestTimeoutSeconds: TimeInterval = 10
+    static let perReceiveTimeoutSeconds: TimeInterval = 2
+}
+
 public struct LiveGatewayClient: GatewayClient {
     private let configuration: GatewayConfiguration
 
@@ -27,9 +43,7 @@ public struct LiveGatewayClient: GatewayClient {
         let rpc = GatewayRPC(configuration: configuration)
         let payload: NodeListPayload = try await rpc.call(method: "node.list", params: EmptyParams())
 
-        let entries = payload.nodes ?? payload
-            .items
-            ?? []
+        let entries = payload.nodes ?? payload.items ?? []
 
         return entries.enumerated().map { offset, entry in
             let stableFallbackID: String = {
@@ -68,11 +82,16 @@ private struct GatewayRPC: Sendable {
             id: connectId,
             method: "connect",
             params: ConnectParams(
-                minProtocol: 3,
-                maxProtocol: 3,
-                client: ConnectClient(id: "hackpanel", version: "0.1", platform: "ios", mode: "operator"),
-                role: "operator",
-                scopes: ["operator.read"],
+                minProtocol: Constants.protocolVersion,
+                maxProtocol: Constants.protocolVersion,
+                client: ConnectClient(
+                    id: Constants.clientId,
+                    version: Constants.clientVersion,
+                    platform: Constants.clientPlatform,
+                    mode: Constants.clientMode
+                ),
+                role: Constants.role,
+                scopes: Constants.scopes,
                 auth: configuration.token.flatMap { $0.isEmpty ? nil : ConnectAuth(token: $0) }
             )
         )
@@ -83,11 +102,15 @@ private struct GatewayRPC: Sendable {
             task: task,
             id: connectId,
             operation: "connect/hello",
-            timeoutSeconds: 5,
+            timeoutSeconds: Constants.connectTimeoutSeconds,
             decodeAs: GatewayResponseFrame<HelloOK>.self
         )
         if hello.ok != true {
-            throw GatewayClientError.notImplemented
+            throw GatewayClientError.gatewayError(
+                code: hello.error?.code,
+                message: hello.error?.message ?? hello.message,
+                details: hello.error?.details
+            )
         }
 
         // 3) Send actual request.
@@ -100,14 +123,19 @@ private struct GatewayRPC: Sendable {
             task: task,
             id: id,
             operation: "rpc(\(method))",
-            timeoutSeconds: 10,
+            timeoutSeconds: Constants.requestTimeoutSeconds,
             decodeAs: GatewayResponseFrame<R>.self
         )
 
         if res.ok == true, let payload = res.payload {
             return payload
         }
-        throw GatewayClientError.notImplemented
+
+        throw GatewayClientError.gatewayError(
+            code: res.error?.code,
+            message: res.error?.message ?? res.message,
+            details: res.error?.details
+        )
     }
 
     private func receiveJSONFrame(task: URLSessionWebSocketTask, timeoutSeconds: Double) async throws -> Any {
@@ -120,7 +148,7 @@ private struct GatewayRPC: Sendable {
             case .data(let data):
                 return try JSONSerialization.jsonObject(with: data)
             @unknown default:
-                throw GatewayClientError.notImplemented
+                throw GatewayClientError.unexpectedFrame
             }
         }
     }
@@ -142,7 +170,7 @@ private struct GatewayRPC: Sendable {
             }
 
             // Bound each receive so cancellation can cut through even if the socket stays silent.
-            let any = try await receiveJSONFrame(task: task, timeoutSeconds: min(2.0, remaining))
+            let any = try await receiveJSONFrame(task: task, timeoutSeconds: min(Constants.perReceiveTimeoutSeconds, remaining))
             if let res = try? decode(any, as: decodeAs) {
                 // Only return frames that match our request id. Ignore other events/responses.
                 if let maybeRes = res as? any GatewayResponseFrameProtocol,
@@ -154,7 +182,11 @@ private struct GatewayRPC: Sendable {
         }
     }
 
-    private func withTimeout<T>(seconds: Double, operation: String, _ body: @Sendable @escaping () async throws -> T) async throws -> T {
+    private func withTimeout<T>(
+        seconds: Double,
+        operation: String,
+        _ body: @Sendable @escaping () async throws -> T
+    ) async throws -> T {
         try await withThrowingTaskGroup(of: T.self) { group in
             group.addTask {
                 try await body()
@@ -215,7 +247,58 @@ private struct GatewayResponseFrame<P: Decodable & Sendable>: Decodable, Sendabl
     var type: String
     var id: String
     var ok: Bool?
+
+    // Success payload
     var payload: P?
+
+    // Error payload (best-effort)
+    var error: GatewayErrorPayload?
+    var message: String?
+}
+
+private struct GatewayErrorPayload: Decodable, Sendable {
+    var code: String?
+    var message: String?
+    var details: String?
+    var data: JSONValue?
+}
+
+private enum JSONValue: Decodable, Sendable {
+    case null
+    case bool(Bool)
+    case number(Double)
+    case string(String)
+    case array([JSONValue])
+    case object([String: JSONValue])
+
+    init(from decoder: Decoder) throws {
+        if let c = try? decoder.singleValueContainer() {
+            if c.decodeNil() { self = .null; return }
+            if let b = try? c.decode(Bool.self) { self = .bool(b); return }
+            if let n = try? c.decode(Double.self) { self = .number(n); return }
+            if let s = try? c.decode(String.self) { self = .string(s); return }
+        }
+        if var a = try? decoder.unkeyedContainer() {
+            var arr: [JSONValue] = []
+            while !a.isAtEnd { arr.append(try a.decode(JSONValue.self)) }
+            self = .array(arr)
+            return
+        }
+        if let o = try? decoder.container(keyedBy: DynamicKey.self) {
+            var dict: [String: JSONValue] = [:]
+            for k in o.allKeys { dict[k.stringValue] = try o.decode(JSONValue.self, forKey: k) }
+            self = .object(dict)
+            return
+        }
+        throw DecodingError.typeMismatch(JSONValue.self, .init(codingPath: decoder.codingPath, debugDescription: "Unsupported JSON"))
+    }
+
+    private struct DynamicKey: CodingKey {
+        var stringValue: String
+        init?(stringValue: String) { self.stringValue = stringValue }
+        var intValue: Int?
+        init?(intValue: Int) { self.stringValue = "\(intValue)"; self.intValue = intValue }
+    }
 }
 
 private struct EncodableValue: Encodable, Sendable {
@@ -264,55 +347,6 @@ private struct HelloOK: Codable, Sendable {
         case type
         case protocolVersion = "protocol"
     }
-}
-
-// MARK: - Payload decoding (best-effort)
-
-private struct StatusPayload: Codable, Sendable {
-    var ok: Bool?
-    var version: String?
-    var uptimeSeconds: Double?
-    var uptimeMs: Double?
-}
-
-private struct NodeListPayload: Codable, Sendable {
-    /// Common shape: {"nodes": [ ... ]}
-    var nodes: [NodeListEntry]?
-
-    /// Fallback: payload is directly an array.
-    var items: [NodeListEntry]?
-
-    init(from decoder: Decoder) throws {
-        if let keyed = try? decoder.container(keyedBy: CodingKeys.self) {
-            self.nodes = try keyed.decodeIfPresent([NodeListEntry].self, forKey: .nodes)
-            self.items = nil
-            return
-        }
-
-        var unkeyed = try decoder.unkeyedContainer()
-        var arr: [NodeListEntry] = []
-        while !unkeyed.isAtEnd {
-            arr.append(try unkeyed.decode(NodeListEntry.self))
-        }
-        self.items = arr
-        self.nodes = nil
-    }
-
-    enum CodingKeys: String, CodingKey { case nodes }
-}
-
-private struct NodeListEntry: Codable, Sendable {
-    var id: String?
-    var nodeId: String?
-    var deviceId: String?
-
-    var name: String?
-    var host: String?
-
-    var connected: Bool?
-
-    /// Some shapes use lastSeenAt (ISO-8601 string).
-    var lastSeenAt: Date?
 }
 
 private extension URL {
