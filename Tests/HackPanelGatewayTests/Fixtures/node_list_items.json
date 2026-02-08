@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "id": "node-1",
+      "name": "hackstudio",
+      "connected": true,
+      "lastSeenAt": "2026-02-08T22:00:00Z"
+    },
+    {
+      "id": "node-2",
+      "name": "pi-gateway",
+      "connected": false,
+      "lastSeenAt": "2026-02-08T21:00:00Z"
+    }
+  ]
+}

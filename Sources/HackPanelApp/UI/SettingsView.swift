@@ -15,7 +15,7 @@ struct SettingsView: View {
                 SecureField("Token", text: $gatewayToken)
                     .textFieldStyle(.roundedBorder)
 
-                Text("Used for upcoming live Gateway wiring. For now the app uses mock data.")
+                Text("HackPanel connects to the OpenClaw Gateway WebSocket RPC endpoint (same port as HTTP; default 18789). Token is optional unless your gateway requires it.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -29,4 +29,3 @@ struct SettingsView: View {
         .padding(24)
     }
 }
-
