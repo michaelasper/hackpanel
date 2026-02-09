@@ -1,0 +1,16 @@
+{
+  "nodes": [
+    {
+      "nodeId": "node-1",
+      "host": "hackstudio",
+      "connected": true,
+      "lastSeenAt": "2026-02-08T22:00:00Z"
+    },
+    {
+      "deviceId": "node-2",
+      "host": "pi-gateway",
+      "connected": false,
+      "lastSeenAt": "2026-02-08T21:00:00Z"
+    }
+  ]
+}
