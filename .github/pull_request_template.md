@@ -1,3 +1,5 @@
+> Reviewers: see Docs/PR_REVIEW.md for the standard checklist and PR-comment template.
+
 ## What / Why
 
 ## Screenshots / Screen recording (for UI changes)
