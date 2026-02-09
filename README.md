@@ -11,6 +11,11 @@ macOS-native “liquid glass” first dashboard for **OpenClaw Gateway**.
 ## Build & Run (local)
 Open `Package.swift` in Xcode and run the `HackPanelApp` executable scheme.
 
+### SPM sanity check (build + tests)
+```bash
+./Scripts/spm_sanity_check.sh
+```
+
 ## Repo hygiene
 - No secrets in repo. Tokens belong in Keychain (later) or local-only settings files (gitignored).
 - PRs must keep scope tight and keep CI green.
