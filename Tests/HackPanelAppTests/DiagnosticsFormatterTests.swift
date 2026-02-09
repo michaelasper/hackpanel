@@ -13,21 +13,27 @@ final class DiagnosticsFormatterTests: XCTestCase {
     func testFormat_includesExpectedFields() {
         let fixedNow = Date(timeIntervalSince1970: 1_700_000_000)
         let errAt = Date(timeIntervalSince1970: 1_700_000_100)
+        let until = Date(timeIntervalSince1970: 1_700_000_120)
+
         let text = DiagnosticsFormatter.format(
             .init(
                 appVersion: "1.2.3",
                 appBuild: "456",
                 osVersion: "macOS 14.0 (23A344)",
+                deviceId: "deadbeef",
                 gatewayBaseURL: "http://127.0.0.1:18789",
                 gatewayToken: "super-secret-token-9999",
                 connectionState: "Disconnected",
                 lastErrorMessage: "Connection refused",
-                lastErrorAt: errAt
+                lastErrorAt: errAt,
+                reconnectBackoffUntil: until
             ),
             now: fixedNow
         )
 
         XCTAssertTrue(text.contains("App version: 1.2.3 (456)"))
+        XCTAssertTrue(text.contains("OS: macOS 14.0 (23A344)"))
+        XCTAssertTrue(text.contains("Device ID: deadbeef"))
         XCTAssertTrue(text.contains("Gateway base URL: http://127.0.0.1:18789"))
         XCTAssertTrue(text.contains("Connection state: Disconnected"))
         XCTAssertTrue(text.contains("Last error: Connection refused"))

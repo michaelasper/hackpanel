@@ -35,6 +35,28 @@ struct SettingsView: View {
             }
 
             Section("Diagnostics") {
+                LabeledContent("Connection") {
+                    Text(gateway.state.displayName)
+                }
+
+                LabeledContent("Last error") {
+                    Text(gateway.lastErrorMessage ?? "(none)")
+                        .textSelection(.enabled)
+                }
+
+                if let at = gateway.lastErrorAt {
+                    LabeledContent("Last error at") {
+                        Text(Self.uiTimestampFormatter.string(from: at))
+                    }
+                }
+
+                if let until = reconnectBackoffUntil, until > Date() {
+                    let remaining = max(0, Int(until.timeIntervalSince(Date()).rounded(.up)))
+                    LabeledContent("Reconnect backoff") {
+                        Text("\(remaining)s")
+                    }
+                }
+
                 Button {
                     copyToPasteboard(diagnosticsText)
                     copiedAt = Date()
@@ -79,17 +101,32 @@ struct SettingsView: View {
                 appVersion: appVersion,
                 appBuild: appBuild,
                 osVersion: ProcessInfo.processInfo.operatingSystemVersionString,
+                deviceId: deviceId,
                 gatewayBaseURL: gatewayBaseURL,
                 gatewayToken: gatewayToken,
                 connectionState: gateway.state.displayName,
                 lastErrorMessage: gateway.lastErrorMessage,
-                lastErrorAt: gateway.lastErrorAt
+                lastErrorAt: gateway.lastErrorAt,
+                reconnectBackoffUntil: reconnectBackoffUntil
             )
         )
     }
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
+    }
+
+    private var reconnectBackoffUntil: Date? {
+        switch gateway.state {
+        case .reconnecting(let nextRetryAt):
+            return nextRetryAt
+        default:
+            return nil
+        }
+    }
+
+    private var deviceId: String? {
+        try? DeviceIdentity.deviceId()
     }
 
     private var appBuild: String {
