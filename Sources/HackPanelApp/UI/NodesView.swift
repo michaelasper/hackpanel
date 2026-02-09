@@ -69,9 +69,9 @@ struct NodesView: View {
     private var gatewayUnavailableDescription: String {
         switch connection.state {
         case .authFailed:
-            return "Update your gateway token in Settings, then retry."
+            return "Update your gateway token in Settings, then reconnect."
         case .disconnected, .reconnecting:
-            return "Check your gateway URL in Settings, or try again."
+            return "Check your gateway URL in Settings, then reconnect."
         case .connected:
             return ""
         }
@@ -109,7 +109,7 @@ struct NodesView: View {
                     } description: {
                         Text(gatewayUnavailableDescription)
                     } actions: {
-                        Button("Retry now") {
+                        Button("Reconnect") {
                             connection.retryNow()
                             Task { await model.refresh() }
                         }

@@ -70,9 +70,9 @@ struct GatewayConnectionBanner: View {
 
         if case .reconnecting = connection.state {
             if let s = connection.countdownSeconds {
-                parts.append(s == 0 ? "Retrying now…" : "Retrying in \(s)s")
+                parts.append(s == 0 ? "Reconnecting now…" : "Reconnecting in \(s)s")
             } else {
-                parts.append("Retrying…")
+                parts.append("Reconnecting…")
             }
         }
 
