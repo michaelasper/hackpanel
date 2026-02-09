@@ -1,6 +1,15 @@
 # BACKLOG
 
-This file is the canonical place to keep small, sliceable work items.
+**Canonical backlog is GitHub Project:** https://github.com/users/michaelasper/projects/2
+
+This file is an optional snapshot only.
+
+
+This file is **not** canonical anymore.
+
+**Canonical backlog:** GitHub Project “hackpanel” — https://github.com/users/michaelasper/projects/2
+
+Use this file only as a pointer and (optional) short-lived snapshot when helpful for discussion.
 
 ## P0 — Liquid Glass redesign/refactor (v1)
 ### Design system primitives (start here)
@@ -29,13 +38,17 @@ This file is the canonical place to keep small, sliceable work items.
 - Basic diagnostics: “Copy debug info” button (app version, OS, gateway URL, last error).
 
 ## Soon
+- Export diagnostics bundle (zip): logs + redacted config summary (no secrets).
 - Provider/integration health (read-only): list providers + OK/Degraded.
-- Logs view: tail latest gateway logs + quick filter.
-- Export diagnostics bundle (zip): logs + config summary (no secrets).
-- Settings storage: persist gateway endpoint + user prefs.
 
 ## Later
 - Keychain-backed secrets + signed-in providers.
 - Auto-refresh tuning + background refresh.
 - Search/sort/pin nodes; per-node detail view.
-- Theming/polish (post-v1 refinements) + onboarding flow.
+- Theming/polish (liquid glass refinements) + onboarding flow.
+
+## Done (recent)
+- Gateway health card (connection/status + last check timestamp).
+- Nodes list (minimal): paired nodes, online/offline, last seen.
+- Basic diagnostics: “Copy debug info” button.
+- Settings storage: persist gateway endpoint + user prefs.
