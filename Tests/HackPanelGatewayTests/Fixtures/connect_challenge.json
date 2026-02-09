@@ -1,0 +1,9 @@
+{
+  "type": "event",
+  "event": "connect.challenge",
+  "payload": {
+    "nonce": "b8c1a1f0c6c84c6a9e2c9e1b66f9d101",
+    "algorithm": "ed25519",
+    "expiresAt": "2026-02-08T22:05:00Z"
+  }
+}

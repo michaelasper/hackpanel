@@ -215,69 +215,6 @@ private enum GatewayFrame: Codable, Sendable {
     }
 }
 
-private protocol GatewayResponseFrameProtocol {
-    var type: String { get }
-    var id: String { get }
-}
-
-private struct GatewayResponseFrame<P: Decodable & Sendable>: Decodable, Sendable, GatewayResponseFrameProtocol {
-    var type: String
-    var id: String
-    var ok: Bool?
-
-    // Success payload
-    var payload: P?
-
-    // Error payload (best-effort)
-    var error: GatewayErrorPayload?
-    var message: String?
-}
-
-private struct GatewayErrorPayload: Decodable, Sendable {
-    var code: String?
-    var message: String?
-    var details: String?
-    var data: JSONValue?
-}
-
-private enum JSONValue: Decodable, Sendable {
-    case null
-    case bool(Bool)
-    case number(Double)
-    case string(String)
-    case array([JSONValue])
-    case object([String: JSONValue])
-
-    init(from decoder: Decoder) throws {
-        if let c = try? decoder.singleValueContainer() {
-            if c.decodeNil() { self = .null; return }
-            if let b = try? c.decode(Bool.self) { self = .bool(b); return }
-            if let n = try? c.decode(Double.self) { self = .number(n); return }
-            if let s = try? c.decode(String.self) { self = .string(s); return }
-        }
-
-        if var a = try? decoder.unkeyedContainer() {
-            var arr: [JSONValue] = []
-            while !a.isAtEnd { arr.append(try a.decode(JSONValue.self)) }
-            self = .array(arr)
-            return
-        }
-        if let o = try? decoder.container(keyedBy: DynamicKey.self) {
-            var dict: [String: JSONValue] = [:]
-            for k in o.allKeys { dict[k.stringValue] = try o.decode(JSONValue.self, forKey: k) }
-            self = .object(dict)
-            return
-        }
-        throw DecodingError.typeMismatch(JSONValue.self, .init(codingPath: decoder.codingPath, debugDescription: "Unsupported JSON"))
-    }
-
-    private struct DynamicKey: CodingKey {
-        var stringValue: String
-        init?(stringValue: String) { self.stringValue = stringValue }
-        var intValue: Int?
-        init?(intValue: Int) { self.stringValue = "\(intValue)"; self.intValue = intValue }
-    }
-}
 
 private struct EncodableValue: Encodable, Sendable {
     private let encodeFn: @Sendable (Encoder) throws -> Void

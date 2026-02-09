@@ -1,0 +1,13 @@
+{
+  "type": "res",
+  "id": "connect-1",
+  "ok": false,
+  "error": {
+    "code": "auth.invalid",
+    "message": "Invalid token",
+    "details": "Token was missing or expired",
+    "data": {
+      "reason": "missing"
+    }
+  }
+}
