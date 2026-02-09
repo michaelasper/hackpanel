@@ -1,6 +1,10 @@
 # BACKLOG
 
-This file is the canonical place to keep small, sliceable work items.
+This file is **not** canonical anymore.
+
+**Canonical backlog:** GitHub Project “hackpanel” — https://github.com/users/michaelasper/projects/2
+
+Use this file only as a pointer and (optional) short-lived snapshot when helpful for discussion.
 
 ## Next (1–2 slices each)
 - Empty/error states: make “no gateway / no nodes” paths look intentional (primary actions: Open Settings, Retry, View diagnostics).
