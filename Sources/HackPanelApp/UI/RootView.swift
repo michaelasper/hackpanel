@@ -44,7 +44,7 @@ struct RootView: View {
                 case .nodes:
                     NodesView(gateway: gateway)
                 case .settings:
-                    SettingsView()
+                    SettingsView(gateway: gateway)
                 }
             }
         }

@@ -23,6 +23,11 @@ final class GatewayConnectionStore: ObservableObject {
     @Published private(set) var lastErrorMessage: String?
     @Published private(set) var lastErrorAt: Date?
 
+    /// When set, callers should wait until this time before attempting the next reconnect.
+    @Published private(set) var reconnectBackoffUntil: Date?
+
+    private var consecutiveFailures: Int = 0
+
     private let client: any GatewayClient
 
     init(client: any GatewayClient) {
@@ -47,9 +52,21 @@ final class GatewayConnectionStore: ObservableObject {
             state = .reconnecting
         }
 
+        if let until = reconnectBackoffUntil {
+            let now = Date()
+            if until > now {
+                let nanos = UInt64((until.timeIntervalSince(now) * 1_000_000_000).rounded(.up))
+                try await Task.sleep(nanoseconds: nanos)
+            }
+        }
+
         do {
             let value = try await work()
             state = .connected
+
+            consecutiveFailures = 0
+            reconnectBackoffUntil = nil
+
             // Clear stale error metadata after a successful call.
             lastErrorMessage = nil
             lastErrorAt = nil
@@ -63,6 +80,15 @@ final class GatewayConnectionStore: ObservableObject {
     private func record(error: Error) {
         lastErrorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
         lastErrorAt = Date()
+
+        consecutiveFailures += 1
+
+        // Basic exponential backoff used by UI-triggered refreshes to avoid hammering a down gateway.
+        // (We do not run a background reconnect loop yet.)
+        let base: TimeInterval = 1
+        let cap: TimeInterval = 30
+        let delay = min(cap, base * pow(2, Double(max(0, consecutiveFailures - 1))))
+        reconnectBackoffUntil = Date().addingTimeInterval(delay)
 
         if isAuthFailure(error: error) {
             state = .authFailed
