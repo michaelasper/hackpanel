@@ -35,9 +35,11 @@ struct SettingsView: View {
             }
 
             Section("Diagnostics") {
-                Button("Copy Diagnostics") {
+                Button {
                     copyToPasteboard(diagnosticsText)
                     copiedAt = Date()
+                } label: {
+                    Label("Copy Diagnostics", systemImage: "doc.on.doc")
                 }
 
                 if let copiedAt {
@@ -46,10 +48,18 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                TextEditor(text: .constant(diagnosticsText))
-                    .font(.system(.body, design: .monospaced))
-                    .frame(minHeight: 180)
-                    .disabled(true)
+                ScrollView {
+                    Text(diagnosticsText)
+                        .textSelection(.enabled)
+                        .font(.system(.body, design: .monospaced))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(10)
+                }
+                .frame(minHeight: 180)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(.quaternary, lineWidth: 1)
+                }
 
                 Text("Token is fully redacted (last-4 shown).")
                     .font(.caption)
