@@ -13,6 +13,13 @@ UI (if applicable)
 - Empty/loading/error states checked
 - Keyboard/focus/tab order reasonable
 
+Liquid Glass slices (required quick QA)
+- Toggle Light/Dark
+- Toggle Reduce Transparency
+- Toggle Increased Contrast
+- Bump text size (at least one larger step)
+- VoiceOver pass: primary actions discoverable; avoid duplicate status narration
+
 Error handling
 - Failure paths handled; user errors are actionable
 - Logs helpful; no sensitive leaks
@@ -23,7 +30,11 @@ Security
 
 Accessibility
 - Labels/roles present; keyboard-only flow works
+- VoiceOver: doesn’t read duplicate/competing status messages (banner vs empty-state, etc.)
 - Legibility/contrast reasonable
+- Larger text sizes: no truncation of primary actions
+- Increased Contrast (if enabled): still legible and not visually “blown out”
+- Reduce Transparency: glass surfaces fall back to solid semantic backgrounds + borders (no blur)
 
 Concurrency / architecture
 - UI updates on `@MainActor`
