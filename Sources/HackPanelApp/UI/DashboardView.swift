@@ -33,6 +33,7 @@ final class DashboardViewModel: ObservableObject {
 }
 
 struct DashboardView: View {
+    @EnvironmentObject private var connection: GatewayConnectionStore
     @StateObject private var model: DashboardViewModel
 
     init(gateway: GatewayConnectionStore) {
@@ -110,7 +111,7 @@ struct DashboardView: View {
             }
             .padding(24)
         }
-        .task {
+        .task(id: connection.refreshToken) {
             await model.refresh()
         }
     }
