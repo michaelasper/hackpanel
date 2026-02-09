@@ -1,6 +1,6 @@
 # PR Review Checklist (HackPanel)
 
-We use `gh` for PR workflow, and we leave feedback via **PR comments** (not formal reviews).
+We use `gh` for PR workflow. By default, leave feedback via **PR comments** (not formal reviews) unless the author asks for a formal review.
 
 ## Reviewer checklist
 

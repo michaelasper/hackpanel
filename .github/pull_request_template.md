@@ -1,4 +1,4 @@
-> Reviewers: see Docs/PR_REVIEW.md for the standard checklist and PR-comment template.
+> Reviewers: see [Docs/PR_REVIEW.md](../Docs/PR_REVIEW.md) for the standard checklist and PR-comment template.
 
 ## What / Why
 
