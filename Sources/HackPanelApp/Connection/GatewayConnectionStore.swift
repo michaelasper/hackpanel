@@ -145,7 +145,7 @@ final class GatewayConnectionStore: ObservableObject {
     }
 
     private func emit(error: Error) {
-        let message = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+        let message = GatewayErrorPresenter.message(for: error)
         let now = Date()
 
         if var current = lastError, current.message == message {
@@ -194,16 +194,7 @@ final class GatewayConnectionStore: ObservableObject {
     }
 
     private func isAuthFailure(error: Error) -> Bool {
-        if let gce = error as? GatewayClientError {
-            switch gce {
-            case .gatewayError(let code, let message, _):
-                let haystack = [code, message].compactMap { $0?.lowercased() }.joined(separator: " ")
-                return haystack.contains("auth") || haystack.contains("unauthorized") || haystack.contains("forbidden")
-            default:
-                break
-            }
-        }
-        let msg = (error as? LocalizedError)?.errorDescription?.lowercased() ?? String(describing: error).lowercased()
-        return msg.contains("unauthorized") || msg.contains("forbidden")
+        GatewayErrorPresenter.isAuthFailure(error)
     }
 }
+
