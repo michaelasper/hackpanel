@@ -21,7 +21,13 @@ struct GlassSurface<Content: View>: View {
 
     var body: some View {
         content
-            .background(backgroundStyle, in: shape)
+            .background(
+                AppTheme.Glass.surfaceBackgroundStyle(
+                    reduceTransparency: reduceTransparency,
+                    contrast: colorSchemeContrast
+                ),
+                in: shape
+            )
             .overlay {
                 shape
                     .strokeBorder(
@@ -43,13 +49,6 @@ struct GlassSurface<Content: View>: View {
                 x: 0,
                 y: AppTheme.Glass.shadowYOffset
             )
-    }
-
-    private var backgroundStyle: some ShapeStyle {
-        if reduceTransparency {
-            return AnyShapeStyle(AppTheme.Glass.backgroundFallback)
-        }
-        return AnyShapeStyle(.ultraThinMaterial)
     }
 
     private var strokeColor: Color {
