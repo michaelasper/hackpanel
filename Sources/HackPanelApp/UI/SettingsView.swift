@@ -35,43 +35,8 @@ struct SettingsView: View {
             }
 
             Section("Diagnostics") {
-                LabeledContent("Connection") {
-                    Text(gateway.state.displayName)
-                }
-
-                LabeledContent("Last error") {
-                    Text(gateway.lastErrorMessage ?? "(none)")
-                        .textSelection(.enabled)
-                }
-
-                if let at = gateway.lastErrorAt {
-                    LabeledContent("Last error at") {
-                        Text(Self.uiTimestampFormatter.string(from: at))
-                    }
-                }
-
-                if let until = gateway.reconnectBackoffUntil, until > Date() {
-                    let remaining = max(0, Int(until.timeIntervalSince(Date()).rounded(.up)))
-                    LabeledContent("Reconnect backoff") {
-                        Text("\(remaining)s")
-                    }
-                }
-
-                Button("Copy diagnostics") {
-                    let text = DiagnosticsFormatter.format(
-                        .init(
-                            appVersion: appVersion,
-                            appBuild: appBuild,
-                            gatewayBaseURL: gatewayBaseURL,
-                            gatewayToken: gatewayToken,
-                            connectionState: gateway.state.displayName,
-                            lastErrorMessage: gateway.lastErrorMessage,
-                            lastErrorAt: gateway.lastErrorAt,
-                            reconnectBackoffUntil: gateway.reconnectBackoffUntil
-                        )
-                    )
-
-                    copyToPasteboard(text)
+                Button("Copy Diagnostics") {
+                    copyToPasteboard(diagnosticsText)
                     copiedAt = Date()
                 }
 
@@ -80,6 +45,15 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+
+                TextEditor(text: .constant(diagnosticsText))
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 180)
+                    .disabled(true)
+
+                Text("Token is fully redacted (last-4 shown).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Appearance") {
@@ -91,12 +65,27 @@ struct SettingsView: View {
         .padding(24)
     }
 
+    private var diagnosticsText: String {
+        DiagnosticsFormatter.format(
+            .init(
+                appVersion: appVersion,
+                appBuild: appBuild,
+                osVersion: ProcessInfo.processInfo.operatingSystemVersionString,
+                gatewayBaseURL: gatewayBaseURL,
+                gatewayToken: gatewayToken,
+                connectionState: gateway.state.displayName,
+                lastErrorMessage: gateway.lastErrorMessage,
+                lastErrorAt: gateway.lastErrorAt
+            )
+        )
+    }
+
     private var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
     }
 
     private var appBuild: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "Unknown"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
     }
 
     private func copyToPasteboard(_ text: String) {
