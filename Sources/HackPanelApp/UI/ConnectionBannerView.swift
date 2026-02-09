@@ -19,6 +19,12 @@ struct ConnectionBannerData: Equatable, Sendable {
     /// Whether the banner should offer an "Open Settings" affordance.
     var showsOpenSettings: Bool = false
 
+    /// Whether the banner should offer a manual retry/reconnect affordance.
+    var showsRetry: Bool = false
+
+    /// Button title for the retry action.
+    var retryTitle: String = "Retry"
+
     static func connected() -> ConnectionBannerData {
         ConnectionBannerData(
             stateText: "Connected",
@@ -36,8 +42,10 @@ struct ConnectionBannerView: View {
     let data: ConnectionBannerData
 
     var onOpenSettings: (() -> Void)? = nil
+    var onRetry: (() -> Void)? = nil
 
     @State private var isShowingDetails: Bool = false
+    @State private var retryDisabledUntil: Date? = nil
 
     var body: some View {
         GlassSurface {
@@ -78,6 +86,19 @@ struct ConnectionBannerView: View {
                         }
                 }
 
+                if data.showsRetry, let onRetry {
+                    Button(data.retryTitle) {
+                        // Local debounce/cooldown to prevent spam-clicking.
+                        retryDisabledUntil = Date().addingTimeInterval(2)
+                        onRetry()
+                    }
+                    .buttonStyle(.link)
+                    .font(.caption)
+                    .disabled((retryDisabledUntil ?? .distantPast) > Date())
+                    .accessibilityLabel(Text(data.retryTitle))
+                    .accessibilityHint(Text("Retries connecting to the gateway"))
+                }
+
                 if data.showsOpenSettings, let onOpenSettings {
                     Button("Open Settings") { onOpenSettings() }
                         .buttonStyle(.link)
@@ -92,6 +113,9 @@ struct ConnectionBannerView: View {
         .contextMenu {
             if hasDetailsOrCopy {
                 Button("Copy Error") { copyToPasteboard(errorText) }
+            }
+            if data.showsRetry, let onRetry {
+                Button(data.retryTitle) { onRetry() }
             }
             if data.showsOpenSettings, let onOpenSettings {
                 Button("Open Settings") { onOpenSettings() }

@@ -26,7 +26,8 @@ struct RootView: View {
             if gateway.state != .connected {
                 ConnectionBannerView(
                     data: bannerData,
-                    onOpenSettings: { route = .settings }
+                    onOpenSettings: { route = .settings },
+                    onRetry: { gateway.retryNow() }
                 )
             }
 
