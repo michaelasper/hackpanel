@@ -4,8 +4,7 @@ import Foundation
 ///
 /// Notes:
 /// - This intentionally keeps the surface area tiny: connect + one-shot RPC calls.
-/// - We do **not** currently implement device identity signing/pairing. This is expected to work
-///   for common local/dev setups and can be expanded later.
+/// - Device identity signing is implemented for modern Gateways that require `connect.challenge`.
 private enum Constants {
     static let protocolVersion = 3
     static let clientId = "hackpanel"
@@ -19,6 +18,8 @@ private enum Constants {
     static let connectTimeoutSeconds: TimeInterval = 5
     static let requestTimeoutSeconds: TimeInterval = 10
     static let receiveTimeoutSeconds: TimeInterval = 10
+
+    static let preconnectChallengeTimeoutSeconds: TimeInterval = 0.5
 }
 
 public struct LiveGatewayClient: GatewayClient {
@@ -79,9 +80,63 @@ private struct GatewayRPC: Sendable {
         task.resume()
         defer { task.cancel(with: .normalClosure, reason: nil) }
 
-        // 1) Send connect request promptly.
-        // The Gateway may send an optional pre-connect "challenge" event, but waiting on it can hang
-        // when the server stays silent. We send connect immediately and ignore any unrelated frames.
+        // 1) Capture an optional pre-connect challenge, then send connect.
+        // Remote Gateways may require a signed connect.challenge nonce.
+        var connectChallengeNonce: String?
+        do {
+            let any = try await withTimeout(
+                Constants.preconnectChallengeTimeoutSeconds,
+                operation: "waiting for connect.challenge"
+            ) {
+                try await receiveJSONFrame(task: task)
+            }
+
+            if let event: GatewayEventFrame<ConnectChallengePayload> = try? decode(any, as: GatewayEventFrame<ConnectChallengePayload>.self),
+               event.type == "event",
+               event.event == "connect.challenge" {
+                connectChallengeNonce = event.normalizedPayload?.nonce
+            }
+        } catch {
+            // No pre-connect event within the short window.
+        }
+
+        let token = configuration.token.flatMap { $0.isEmpty ? nil : $0 }
+
+        let identity: DeviceIdentity
+        do {
+            identity = try DeviceIdentity.loadOrCreate()
+        } catch {
+            throw GatewayClientError.deviceIdentityUnavailable(underlying: String(describing: error))
+        }
+
+        let signedAtMs = Int64(Date().timeIntervalSince1970 * 1000.0)
+        let payload = DeviceAuthPayload.build(
+            version: connectChallengeNonce == nil ? .v1 : .v2,
+            deviceId: identity.deviceId,
+            clientId: Constants.clientId,
+            clientMode: Constants.clientMode,
+            role: Constants.role,
+            scopes: Constants.scopes,
+            signedAtMs: signedAtMs,
+            token: token,
+            nonce: connectChallengeNonce
+        )
+
+        let signature: String
+        do {
+            signature = try identity.signConnectPayload(payload)
+        } catch {
+            throw GatewayClientError.deviceIdentityUnavailable(underlying: String(describing: error))
+        }
+
+        let connectDevice = ConnectDevice(
+            id: identity.deviceId,
+            publicKey: identity.publicKeyBase64Url,
+            signature: signature,
+            signedAt: signedAtMs,
+            nonce: connectChallengeNonce
+        )
+
         let connectId = UUID().uuidString
         let connect = GatewayFrame.makeReq(
             id: connectId,
@@ -95,9 +150,15 @@ private struct GatewayRPC: Sendable {
                     platform: Constants.clientPlatform,
                     mode: Constants.clientMode
                 ),
+                caps: [],
+                commands: nil,
+                permissions: nil,
                 role: Constants.role,
                 scopes: Constants.scopes,
-                auth: configuration.token.flatMap { $0.isEmpty ? nil : ConnectAuth(token: $0) }
+                device: connectDevice,
+                auth: token.map { ConnectAuth(token: $0) },
+                locale: nil,
+                userAgent: nil
             )
         )
         try await sendJSONFrame(task: task, frame: connect)
@@ -237,10 +298,35 @@ private struct ConnectParams: Codable, Sendable {
     var maxProtocol: Int
     var client: ConnectClient
 
+    var caps: [String]?
+    var commands: [String]?
+    var permissions: [String: Bool]?
+
     var role: String
     var scopes: [String]
 
+    var device: ConnectDevice?
     var auth: ConnectAuth?
+
+    var locale: String?
+    var userAgent: String?
+}
+
+private struct ConnectDevice: Codable, Sendable {
+    var id: String
+    var publicKey: String
+    var signature: String
+    var signedAt: Int64
+    var nonce: String?
+}
+
+private struct ConnectChallengePayload: Decodable, Sendable {
+    var nonce: String?
+    var ts: Int64?
+
+    // Older/newer builds may include these; decode best-effort.
+    var algorithm: String?
+    var expiresAt: Date?
 }
 
 private struct ConnectClient: Codable, Sendable {

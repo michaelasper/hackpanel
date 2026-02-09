@@ -23,6 +23,8 @@ public enum GatewayClientError: Error, LocalizedError, Sendable {
     case unexpectedFrame
     case gatewayError(code: String?, message: String?, details: String?)
 
+    case deviceIdentityUnavailable(underlying: String)
+
     public var errorDescription: String? {
         switch self {
         case .notImplemented:
@@ -39,6 +41,9 @@ public enum GatewayClientError: Error, LocalizedError, Sendable {
             if let message, !message.isEmpty { parts.append(message) }
             if let details, !details.isEmpty { parts.append(details) }
             return parts.isEmpty ? "Gateway error." : parts.joined(separator: ": ")
+
+        case .deviceIdentityUnavailable(let underlying):
+            return "Device identity unavailable: \(underlying)"
         }
     }
 }
