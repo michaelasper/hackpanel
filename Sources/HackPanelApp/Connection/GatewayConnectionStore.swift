@@ -30,6 +30,7 @@ final class GatewayConnectionStore: ObservableObject {
     @Published private(set) var state: State = .disconnected
     @Published private(set) var lastError: ConnectionError?
     @Published private(set) var countdownSeconds: Int?
+    @Published private(set) var lastHealthCheckAt: Date?
 
     var lastErrorMessage: String? { lastError?.message }
     var lastErrorAt: Date? { lastError?.lastEmittedAt }
@@ -52,7 +53,80 @@ final class GatewayConnectionStore: ObservableObject {
 
     init(client: any GatewayClient) {
         self.client = client
+
+        #if DEBUG
+        applyForcedStateIfPresent(environment: ProcessInfo.processInfo.environment, now: Date())
+        #endif
     }
+
+    #if DEBUG
+    /// Screenshot/debug helper to force the connection banner into a specific state.
+    ///
+    /// Usage:
+    /// `HACKPANEL_FORCE_STATE=connected|reconnecting|disconnected|authFailed`
+    ///
+    /// This is DEBUG-only and is ignored for empty/falsey values.
+    func applyForcedStateIfPresent(environment: [String: String], now: Date) {
+        guard let raw = environment["HACKPANEL_FORCE_STATE"] else { return }
+        let forced = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !forced.isEmpty else { return }
+        guard !["0", "false", "off", "no"].contains(forced) else { return }
+
+        guard let forcedState = Self.forcedState(from: forced, now: now) else { return }
+        state = forcedState.state
+        lastError = forcedState.lastError
+        countdownSeconds = forcedState.countdownSeconds
+    }
+
+    struct ForcedState: Equatable {
+        var state: State
+        var lastError: ConnectionError?
+        var countdownSeconds: Int?
+    }
+
+    static func forcedState(from forced: String, now: Date) -> ForcedState? {
+        switch forced {
+        case "connected":
+            return ForcedState(state: .connected, lastError: nil, countdownSeconds: nil)
+
+        case "reconnecting":
+            return ForcedState(
+                state: .reconnecting(nextRetryAt: now.addingTimeInterval(12)),
+                lastError: ConnectionError(
+                    message: "Connection lost (simulated)",
+                    firstSeenAt: now,
+                    lastEmittedAt: now
+                ),
+                countdownSeconds: 12
+            )
+
+        case "authfailed", "auth_failed", "auth":
+            return ForcedState(
+                state: .authFailed,
+                lastError: ConnectionError(
+                    message: "Invalid token (simulated)",
+                    firstSeenAt: now,
+                    lastEmittedAt: now
+                ),
+                countdownSeconds: nil
+            )
+
+        case "disconnected":
+            return ForcedState(
+                state: .disconnected,
+                lastError: ConnectionError(
+                    message: "Gateway unreachable (simulated)",
+                    firstSeenAt: now,
+                    lastEmittedAt: now
+                ),
+                countdownSeconds: nil
+            )
+
+        default:
+            return nil
+        }
+    }
+    #endif
 
     deinit {
         monitorTask?.cancel()

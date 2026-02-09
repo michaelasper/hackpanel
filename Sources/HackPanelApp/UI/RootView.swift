@@ -48,6 +48,7 @@ struct RootView: View {
                 }
             }
         }
+        .environmentObject(gateway)
         .frame(minWidth: 900, minHeight: 600)
     }
 
