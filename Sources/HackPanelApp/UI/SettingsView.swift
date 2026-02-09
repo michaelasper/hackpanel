@@ -35,61 +35,65 @@ struct SettingsView: View {
             }
 
             Section("Diagnostics") {
-                LabeledContent("Connection") {
-                    Text(gateway.state.displayName)
-                }
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 12) {
+                        LabeledContent("Connection") {
+                            Text(gateway.state.displayName)
+                        }
 
-                LabeledContent("Last error") {
-                    Text(gateway.lastErrorMessage ?? "(none)")
-                        .textSelection(.enabled)
-                }
+                        LabeledContent("Last error") {
+                            Text(gateway.lastErrorMessage ?? "(none)")
+                                .textSelection(.enabled)
+                        }
 
-                if let at = gateway.lastErrorAt {
-                    LabeledContent("Last error at") {
-                        Text(Self.uiTimestampFormatter.string(from: at))
+                        if let at = gateway.lastErrorAt {
+                            LabeledContent("Last error at") {
+                                Text(Self.uiTimestampFormatter.string(from: at))
+                            }
+                        }
+
+                        if let until = reconnectBackoffUntil, until > Date() {
+                            let remaining = max(0, Int(until.timeIntervalSince(Date()).rounded(.up)))
+                            LabeledContent("Reconnect backoff") {
+                                Text("\(remaining)s")
+                            }
+                        }
+
+                        Button {
+                            copyToPasteboard(diagnosticsText)
+                            copiedAt = Date()
+                        } label: {
+                            Label("Copy Diagnostics", systemImage: "doc.on.doc")
+                        }
+
+                        if let copiedAt {
+                            Text("Copied at \(Self.uiTimestampFormatter.string(from: copiedAt)).")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        GlassSurface {
+                            ScrollView {
+                                Text(diagnosticsText)
+                                    .textSelection(.enabled)
+                                    .font(.system(.body, design: .monospaced))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(10)
+                            }
+                            .frame(minHeight: 180)
+                        }
+
+                        Text("Token is fully redacted (last-4 shown).")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
-
-                if let until = reconnectBackoffUntil, until > Date() {
-                    let remaining = max(0, Int(until.timeIntervalSince(Date()).rounded(.up)))
-                    LabeledContent("Reconnect backoff") {
-                        Text("\(remaining)s")
-                    }
-                }
-
-                Button {
-                    copyToPasteboard(diagnosticsText)
-                    copiedAt = Date()
-                } label: {
-                    Label("Copy Diagnostics", systemImage: "doc.on.doc")
-                }
-
-                if let copiedAt {
-                    Text("Copied at \(Self.uiTimestampFormatter.string(from: copiedAt)).")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                ScrollView {
-                    Text(diagnosticsText)
-                        .textSelection(.enabled)
-                        .font(.system(.body, design: .monospaced))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(10)
-                }
-                .frame(minHeight: 180)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(.quaternary, lineWidth: 1)
-                }
-
-                Text("Token is fully redacted (last-4 shown).")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             Section("Appearance") {
-                GlassPrimitivesDemoView()
+                GlassCard {
+                    GlassPrimitivesDemoView()
+                }
             }
         }
         .padding(24)
