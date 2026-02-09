@@ -27,6 +27,7 @@ final class NodesViewModel: ObservableObject {
 }
 
 struct NodesView: View {
+    @EnvironmentObject private var connection: GatewayConnectionStore
     @StateObject private var model: NodesViewModel
 
     init(gateway: GatewayConnectionStore) {
@@ -69,6 +70,6 @@ struct NodesView: View {
             }
         }
         .padding(24)
-        .task { await model.refresh() }
+        .task(id: connection.refreshToken) { await model.refresh() }
     }
 }
