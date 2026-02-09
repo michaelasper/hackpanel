@@ -7,6 +7,16 @@ final class GatewayConnectionStore: ObservableObject {
         case connected
         case reconnecting(nextRetryAt: Date)
         case disconnected
+        case authFailed
+
+        var displayName: String {
+            switch self {
+            case .connected: return "Connected"
+            case .reconnecting: return "Reconnecting"
+            case .disconnected: return "Disconnected"
+            case .authFailed: return "Auth failed"
+            }
+        }
     }
 
     struct ConnectionError: Equatable {
@@ -17,9 +27,12 @@ final class GatewayConnectionStore: ObservableObject {
         var lastEmittedAt: Date
     }
 
-    @Published private(set) var state: State = .connected
+    @Published private(set) var state: State = .disconnected
     @Published private(set) var lastError: ConnectionError?
     @Published private(set) var countdownSeconds: Int?
+
+    var lastErrorMessage: String? { lastError?.message }
+    var lastErrorAt: Date? { lastError?.lastEmittedAt }
 
     /// Bump this to cause views to refresh their data.
     @Published private(set) var refreshToken: UUID = UUID()
@@ -150,5 +163,47 @@ final class GatewayConnectionStore: ObservableObject {
 
     private func clearErrorOnSuccess() {
         lastError = nil
+    }
+
+    func fetchStatus() async throws -> GatewayStatus {
+        try await trackCall { try await client.fetchStatus() }
+    }
+
+    func fetchNodes() async throws -> [NodeSummary] {
+        try await trackCall { try await client.fetchNodes() }
+    }
+
+    private func trackCall<T>(_ work: () async throws -> T) async throws -> T {
+        do {
+            let value = try await work()
+            consecutiveFailures = 0
+            clearErrorOnSuccess()
+            state = .connected
+            countdownSeconds = nil
+            return value
+        } catch {
+            consecutiveFailures += 1
+            emit(error: error)
+            if isAuthFailure(error: error) {
+                state = .authFailed
+            } else {
+                state = .disconnected
+            }
+            throw error
+        }
+    }
+
+    private func isAuthFailure(error: Error) -> Bool {
+        if let gce = error as? GatewayClientError {
+            switch gce {
+            case .gatewayError(let code, let message, _):
+                let haystack = [code, message].compactMap { $0?.lowercased() }.joined(separator: " ")
+                return haystack.contains("auth") || haystack.contains("unauthorized") || haystack.contains("forbidden")
+            default:
+                break
+            }
+        }
+        let msg = (error as? LocalizedError)?.errorDescription?.lowercased() ?? String(describing: error).lowercased()
+        return msg.contains("unauthorized") || msg.contains("forbidden")
     }
 }

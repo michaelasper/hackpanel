@@ -21,7 +21,7 @@ struct GatewayConnectionBanner: View {
         switch connection.state {
         case .connected:
             return connection.lastError != nil
-        case .disconnected, .reconnecting:
+        case .disconnected, .reconnecting, .authFailed:
             return true
         }
     }
@@ -61,6 +61,8 @@ struct GatewayConnectionBanner: View {
             return "Gateway error"
         case .disconnected, .reconnecting:
             return "Disconnected from Gateway"
+        case .authFailed:
+            return "Authentication failed"
         }
     }
 
@@ -90,6 +92,8 @@ struct GatewayConnectionBanner: View {
                 .foregroundStyle(.yellow)
         case .disconnected:
             Image(systemName: "wifi.slash")
+        case .authFailed:
+            Image(systemName: "lock.slash.fill")
                 .foregroundStyle(.orange)
         case .reconnecting:
             ProgressView()
