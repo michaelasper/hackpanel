@@ -5,6 +5,9 @@ import SwiftUI
 /// Keep this intentionally small and pragmatic: only tokens we actively use.
 enum AppTheme {
     enum Layout {
+        /// Standard spacing between stacked groups.
+        static let stackSpacing: CGFloat = 16
+
         /// Standard outer padding for top-level screens.
         static let pagePadding: CGFloat = 24
 
@@ -13,6 +16,17 @@ enum AppTheme {
 
         /// Default vertical padding for list rows.
         static let rowVerticalPadding: CGFloat = 6
+
+        /// Compact row spacing for dense lists.
+        static let rowVerticalPaddingCompact: CGFloat = 4
+    }
+
+    enum Typography {
+        static let pageTitle: Font = .largeTitle.weight(.semibold)
+        static let sectionTitle: Font = .title3.weight(.semibold)
+        static let bodyEmphasis: Font = .body.weight(.medium)
+        static let captionLabel: Font = .caption.weight(.medium)
+        static let captionEmphasis: Font = .caption.weight(.semibold)
     }
 
     enum Glass {

@@ -42,10 +42,10 @@ struct DashboardView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: AppTheme.Layout.stackSpacing) {
                 HStack(alignment: .firstTextBaseline) {
                     Text("HackPanel")
-                        .font(.system(.largeTitle, design: .rounded).weight(.semibold))
+                        .font(AppTheme.Typography.pageTitle)
 
                     Spacer()
 
@@ -71,22 +71,22 @@ struct DashboardView: View {
                 GlassCard {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Gateway health")
-                            .font(.title3.weight(.semibold))
+                            .font(AppTheme.Typography.sectionTitle)
 
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Connection")
-                                    .font(.caption.weight(.medium))
+                                    .font(AppTheme.Typography.captionLabel)
                                     .foregroundStyle(.secondary)
                                 Text(connection.state.displayName)
-                                    .font(.body.weight(.medium))
+                                    .font(AppTheme.Typography.bodyEmphasis)
                             }
 
                             Divider().opacity(0.25)
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Status")
-                                    .font(.caption.weight(.medium))
+                                    .font(AppTheme.Typography.captionLabel)
                                     .foregroundStyle(.secondary)
                                 StatusPill(ok: model.status?.ok)
                             }
@@ -95,14 +95,14 @@ struct DashboardView: View {
 
                             VStack(alignment: .trailing, spacing: 4) {
                                 Text("Last check")
-                                    .font(.caption.weight(.medium))
+                                    .font(AppTheme.Typography.captionLabel)
                                     .foregroundStyle(.secondary)
                                 if let last = connection.lastHealthCheckAt {
                                     Text(last, format: .dateTime.month().day().hour().minute().second())
-                                        .font(.caption.weight(.medium))
+                                        .font(AppTheme.Typography.captionLabel)
                                 } else {
                                     Text("Never")
-                                        .font(.caption.weight(.medium))
+                                        .font(AppTheme.Typography.captionLabel)
                                         .foregroundStyle(.secondary)
                                 }
                             }
@@ -114,7 +114,7 @@ struct DashboardView: View {
                             Spacer()
                             if let uptime = model.status?.uptimeSeconds {
                                 Text("Uptime: \(Int(uptime))s")
-                                    .font(.caption.weight(.medium))
+                                    .font(AppTheme.Typography.captionLabel)
                                     .foregroundStyle(.secondary)
                             }
                         }
@@ -124,9 +124,9 @@ struct DashboardView: View {
                 GlassCard {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Nodes")
-                            .font(.title3.weight(.semibold))
+                            .font(AppTheme.Typography.sectionTitle)
                         Text("\(model.nodes.count) total")
-                            .font(.caption.weight(.medium))
+                            .font(AppTheme.Typography.captionLabel)
                             .foregroundStyle(.secondary)
 
                         Divider().opacity(0.3)
@@ -136,15 +136,15 @@ struct DashboardView: View {
                                 Text(node.name)
                                 Spacer()
                                 Text(node.state.rawValue.capitalized)
-                                    .font(.caption.weight(.medium))
+                                    .font(AppTheme.Typography.captionLabel)
                                     .foregroundStyle(node.state == .online ? .green : .secondary)
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, AppTheme.Layout.rowVerticalPadding)
                         }
                     }
                 }
             }
-            .padding(24)
+            .padding(AppTheme.Layout.pagePadding)
         }
         .task(id: connection.refreshToken) {
             await model.refresh()
@@ -166,7 +166,7 @@ struct StatusPill: View {
 
         GlassSurface {
             Text(text)
-                .font(.caption.weight(.semibold))
+                .font(AppTheme.Typography.captionEmphasis)
                 .padding(.horizontal, AppTheme.Glass.pillHorizontalPadding)
                 .padding(.vertical, AppTheme.Glass.pillVerticalPadding)
         }
