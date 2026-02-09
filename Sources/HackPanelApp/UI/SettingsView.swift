@@ -50,7 +50,7 @@ struct SettingsView: View {
                     }
                 }
 
-                if let until = gateway.reconnectBackoffUntil, until > Date() {
+                if let until = reconnectBackoffUntil, until > Date() {
                     let remaining = max(0, Int(until.timeIntervalSince(Date()).rounded(.up)))
                     LabeledContent("Reconnect backoff") {
                         Text("\(remaining)s")
@@ -107,13 +107,22 @@ struct SettingsView: View {
                 connectionState: gateway.state.displayName,
                 lastErrorMessage: gateway.lastErrorMessage,
                 lastErrorAt: gateway.lastErrorAt,
-                reconnectBackoffUntil: gateway.reconnectBackoffUntil
+                reconnectBackoffUntil: reconnectBackoffUntil
             )
         )
     }
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
+    }
+
+    private var reconnectBackoffUntil: Date? {
+        switch gateway.state {
+        case .reconnecting(let nextRetryAt):
+            return nextRetryAt
+        default:
+            return nil
+        }
     }
 
     private var deviceId: String? {
