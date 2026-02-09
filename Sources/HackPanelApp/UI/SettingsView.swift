@@ -21,78 +21,93 @@ struct SettingsView: View {
     }()
 
     var body: some View {
-        Form {
-            Section("Gateway") {
-                TextField("Base URL", text: $gatewayBaseURL)
-                    .textFieldStyle(.roundedBorder)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Gateway")
+                            .font(.headline)
 
-                SecureField("Token", text: $gatewayToken)
-                    .textFieldStyle(.roundedBorder)
+                        TextField("Base URL", text: $gatewayBaseURL)
+                            .textFieldStyle(.roundedBorder)
 
-                Text("HackPanel connects to the OpenClaw Gateway WebSocket RPC endpoint (same port as HTTP; default 18789). Token is optional unless your gateway requires it.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+                        SecureField("Token", text: $gatewayToken)
+                            .textFieldStyle(.roundedBorder)
 
-            Section("Diagnostics") {
-                LabeledContent("Connection") {
-                    Text(gateway.state.displayName)
-                }
-
-                LabeledContent("Last error") {
-                    Text(gateway.lastErrorMessage ?? "(none)")
-                        .textSelection(.enabled)
-                }
-
-                if let at = gateway.lastErrorAt {
-                    LabeledContent("Last error at") {
-                        Text(Self.uiTimestampFormatter.string(from: at))
+                        Text("HackPanel connects to the OpenClaw Gateway WebSocket RPC endpoint (same port as HTTP; default 18789). Token is optional unless your gateway requires it.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
-                if let until = reconnectBackoffUntil, until > Date() {
-                    let remaining = max(0, Int(until.timeIntervalSince(Date()).rounded(.up)))
-                    LabeledContent("Reconnect backoff") {
-                        Text("\(remaining)s")
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Diagnostics")
+                            .font(.headline)
+
+                        LabeledContent("Connection") {
+                            Text(gateway.state.displayName)
+                        }
+
+                        LabeledContent("Last error") {
+                            Text(gateway.lastErrorMessage ?? "(none)")
+                                .textSelection(.enabled)
+                        }
+
+                        if let at = gateway.lastErrorAt {
+                            LabeledContent("Last error at") {
+                                Text(Self.uiTimestampFormatter.string(from: at))
+                            }
+                        }
+
+                        if let until = reconnectBackoffUntil, until > Date() {
+                            let remaining = max(0, Int(until.timeIntervalSince(Date()).rounded(.up)))
+                            LabeledContent("Reconnect backoff") {
+                                Text("\(remaining)s")
+                            }
+                        }
+
+                        Button {
+                            copyToPasteboard(diagnosticsText)
+                            copiedAt = Date()
+                        } label: {
+                            Label("Copy Diagnostics", systemImage: "doc.on.doc")
+                        }
+
+                        if let copiedAt {
+                            Text("Copied at \(Self.uiTimestampFormatter.string(from: copiedAt)).")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        GlassSurface {
+                            ScrollView {
+                                Text(diagnosticsText)
+                                    .textSelection(.enabled)
+                                    .font(.system(.body, design: .monospaced))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(12)
+                            }
+                        }
+                        .frame(minHeight: 180)
+
+                        Text("Token is fully redacted (last-4 shown).")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
-                Button {
-                    copyToPasteboard(diagnosticsText)
-                    copiedAt = Date()
-                } label: {
-                    Label("Copy Diagnostics", systemImage: "doc.on.doc")
-                }
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Appearance")
+                            .font(.headline)
 
-                if let copiedAt {
-                    Text("Copied at \(Self.uiTimestampFormatter.string(from: copiedAt)).")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        GlassPrimitivesDemoView()
+                    }
                 }
-
-                ScrollView {
-                    Text(diagnosticsText)
-                        .textSelection(.enabled)
-                        .font(.system(.body, design: .monospaced))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(10)
-                }
-                .frame(minHeight: 180)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(.quaternary, lineWidth: 1)
-                }
-
-                Text("Token is fully redacted (last-4 shown).")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
-
-            Section("Appearance") {
-                GlassPrimitivesDemoView()
-            }
+            .padding(24)
         }
-        .padding(24)
     }
 
     private var diagnosticsText: String {
