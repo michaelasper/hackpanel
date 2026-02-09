@@ -6,3 +6,16 @@ DerivedData/
 .swiftpm/configuration/registries.json
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
+
+# OpenClaw local workspace artifacts (do not commit)
+MEMORY.md
+memory/
+AGENTS.md
+BACKLOG.md
+BOOTSTRAP.md
+HEARTBEAT.md
+IDENTITY.md
+SOUL.md
+TOOLS.md
+USER.md
+tmp_*.md
