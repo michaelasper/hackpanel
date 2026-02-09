@@ -4,6 +4,17 @@ import SwiftUI
 ///
 /// Keep this intentionally small and pragmatic: only tokens we actively use.
 enum AppTheme {
+    enum Layout {
+        /// Standard outer padding for top-level screens.
+        static let pagePadding: CGFloat = 24
+
+        /// Default vertical spacing between top-level sections on a screen.
+        static let sectionSpacing: CGFloat = 12
+
+        /// Default vertical padding for list rows.
+        static let rowVerticalPadding: CGFloat = 6
+    }
+
     enum Glass {
         static let cornerRadius: CGFloat = 14
         static let contentPadding: CGFloat = 16

@@ -78,7 +78,7 @@ struct NodesView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: AppTheme.Layout.sectionSpacing) {
             HStack {
                 Text("Nodes")
                     .font(.title2.weight(.semibold))
@@ -103,64 +103,75 @@ struct NodesView: View {
             }
 
             if shouldShowGatewayUnavailableState {
-                ContentUnavailableView {
-                    Label(gatewayUnavailableTitle, systemImage: gatewayUnavailableIcon)
-                } description: {
-                    Text(gatewayUnavailableDescription)
-                } actions: {
-                    Button("Retry now") {
-                        connection.retryNow()
-                        Task { await model.refresh() }
+                GlassCard {
+                    ContentUnavailableView {
+                        Label(gatewayUnavailableTitle, systemImage: gatewayUnavailableIcon)
+                    } description: {
+                        Text(gatewayUnavailableDescription)
+                    } actions: {
+                        Button("Retry now") {
+                            connection.retryNow()
+                            Task { await model.refresh() }
+                        }
+                        .disabled(model.isLoading)
                     }
-                    .disabled(model.isLoading)
+                    .frame(maxWidth: .infinity)
                 }
             } else if model.nodes.isEmpty, !model.isLoading, model.errorMessage == nil {
-                ContentUnavailableView {
-                    Label("No paired nodes", systemImage: "sensor.tag.radiowaves.forward")
-                } description: {
-                    Text("Pair a node in your gateway, then refresh.")
-                } actions: {
-                    Button("Refresh") { Task { await model.refresh() } }
-                        .disabled(model.isLoading)
+                GlassCard {
+                    ContentUnavailableView {
+                        Label("No paired nodes", systemImage: "sensor.tag.radiowaves.forward")
+                    } description: {
+                        Text("Pair a node in your gateway, then refresh.")
+                    } actions: {
+                        Button("Refresh") { Task { await model.refresh() } }
+                            .disabled(model.isLoading)
+                    }
+                    .frame(maxWidth: .infinity)
                 }
             } else {
-                List(model.sortedNodes) { node in
-                    HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        Circle()
-                            .fill(Self.color(for: node.state))
-                            .frame(width: 8, height: 8)
-                            .padding(.top, 6)
+                GlassSurface {
+                    List(model.sortedNodes) { node in
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Circle()
+                                .fill(Self.color(for: node.state))
+                                .frame(width: 8, height: 8)
+                                .padding(.top, AppTheme.Layout.rowVerticalPadding)
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(node.name)
-                                .font(.body)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(node.name)
+                                    .font(.body)
 
-                            HStack(spacing: 8) {
-                                Text(node.id)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                HStack(spacing: 8) {
+                                    Text(node.id)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
 
-                                Text("•")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    Text("•")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
 
-                                Text(Self.lastSeenText(for: node.lastSeenAt))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    Text(Self.lastSeenText(for: node.lastSeenAt))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
+
+                            Spacer()
+
+                            Text(node.state.rawValue.capitalized)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(node.state == .online ? .green : .secondary)
                         }
-
-                        Spacer()
-
-                        Text(node.state.rawValue.capitalized)
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(node.state == .online ? .green : .secondary)
+                        .padding(.vertical, AppTheme.Layout.rowVerticalPadding)
+                        .listRowBackground(Color.clear)
                     }
-                    .padding(.vertical, 6)
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                 }
             }
         }
-        .padding(24)
+        .padding(AppTheme.Layout.pagePadding)
         .task(id: connection.refreshToken) { await model.refresh() }
     }
 }
