@@ -35,6 +35,11 @@ let package = Package(
             resources: [
                 .process("Fixtures")
             ]
+        ),
+        .testTarget(
+            name: "HackPanelAppTests",
+            dependencies: ["HackPanelApp"],
+            path: "Tests/HackPanelAppTests"
         )
     ]
 )
