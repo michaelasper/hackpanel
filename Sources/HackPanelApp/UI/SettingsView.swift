@@ -101,6 +101,7 @@ struct SettingsView: View {
                 appVersion: appVersion,
                 appBuild: appBuild,
                 osVersion: ProcessInfo.processInfo.operatingSystemVersionString,
+                deviceId: deviceId,
                 gatewayBaseURL: gatewayBaseURL,
                 gatewayToken: gatewayToken,
                 connectionState: gateway.state.displayName,
@@ -113,6 +114,10 @@ struct SettingsView: View {
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
+    }
+
+    private var deviceId: String? {
+        try? DeviceIdentity.deviceId()
     }
 
     private var appBuild: String {

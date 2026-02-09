@@ -8,30 +8,37 @@ enum DiagnosticsFormatter {
         var appVersion: String
         var appBuild: String
         var osVersion: String
+        var deviceId: String?
         var gatewayBaseURL: String
         var gatewayToken: String
         var connectionState: String
         var lastErrorMessage: String?
         var lastErrorAt: Date?
+        /// If present, indicates when the next reconnect attempt is allowed.
+        var reconnectBackoffUntil: Date?
 
         init(
             appVersion: String,
             appBuild: String,
             osVersion: String,
+            deviceId: String? = nil,
             gatewayBaseURL: String,
             gatewayToken: String,
             connectionState: String,
             lastErrorMessage: String? = nil,
-            lastErrorAt: Date? = nil
+            lastErrorAt: Date? = nil,
+            reconnectBackoffUntil: Date? = nil
         ) {
             self.appVersion = appVersion
             self.appBuild = appBuild
             self.osVersion = osVersion
+            self.deviceId = deviceId
             self.gatewayBaseURL = gatewayBaseURL
             self.gatewayToken = gatewayToken
             self.connectionState = connectionState
             self.lastErrorMessage = lastErrorMessage
             self.lastErrorAt = lastErrorAt
+            self.reconnectBackoffUntil = reconnectBackoffUntil
         }
     }
 
@@ -43,6 +50,9 @@ enum DiagnosticsFormatter {
 
         lines.append("App version: \(input.appVersion) (\(input.appBuild))")
         lines.append("OS: \(input.osVersion)")
+        if let deviceId = input.deviceId, !deviceId.isEmpty {
+            lines.append("Device ID: \(deviceId)")
+        }
         lines.append("")
 
         lines.append("Gateway base URL: \(input.gatewayBaseURL)")
@@ -60,18 +70,20 @@ enum DiagnosticsFormatter {
             lines.append("Last error: (none)")
         }
 
+        if let until = input.reconnectBackoffUntil {
+            let remaining = max(0, Int(until.timeIntervalSince(now).rounded(.up)))
+            lines.append("Reconnect backoff: \(remaining)s remaining (until \(iso8601(until)))")
+        }
+
         return lines.joined(separator: "\n") + "\n"
     }
 
-    /// Redacts all but the last 4 characters.
     static func redactToken(_ raw: String) -> String {
         let token = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !token.isEmpty else { return "(empty)" }
-        let last4 = token.count >= 4 ? String(token.suffix(4)) : nil
-        if let last4 {
-            return "***redacted*** (last4: \(last4))"
-        }
-        return "***redacted***"
+        guard token.count >= 4 else { return "***redacted***" }
+        let last4 = String(token.suffix(4))
+        return "***redacted*** (last4: \(last4))"
     }
 
     private static func iso8601(_ date: Date) -> String {
