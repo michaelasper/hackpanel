@@ -35,6 +35,28 @@ struct SettingsView: View {
             }
 
             Section("Diagnostics") {
+                LabeledContent("Connection") {
+                    Text(gateway.state.displayName)
+                }
+
+                LabeledContent("Last error") {
+                    Text(gateway.lastErrorMessage ?? "(none)")
+                        .textSelection(.enabled)
+                }
+
+                if let at = gateway.lastErrorAt {
+                    LabeledContent("Last error at") {
+                        Text(Self.uiTimestampFormatter.string(from: at))
+                    }
+                }
+
+                if let until = gateway.reconnectBackoffUntil, until > Date() {
+                    let remaining = max(0, Int(until.timeIntervalSince(Date()).rounded(.up)))
+                    LabeledContent("Reconnect backoff") {
+                        Text("\(remaining)s")
+                    }
+                }
+
                 Button {
                     copyToPasteboard(diagnosticsText)
                     copiedAt = Date()
@@ -83,7 +105,8 @@ struct SettingsView: View {
                 gatewayToken: gatewayToken,
                 connectionState: gateway.state.displayName,
                 lastErrorMessage: gateway.lastErrorMessage,
-                lastErrorAt: gateway.lastErrorAt
+                lastErrorAt: gateway.lastErrorAt,
+                reconnectBackoffUntil: gateway.reconnectBackoffUntil
             )
         )
     }
