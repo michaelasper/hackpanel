@@ -8,6 +8,14 @@ enum AppTheme {
         static let cornerRadius: CGFloat = 14
         static let contentPadding: CGFloat = 16
 
+        /// Smaller padding used for compact banners.
+        static let bannerHorizontalPadding: CGFloat = 16
+        static let bannerVerticalPadding: CGFloat = 10
+
+        /// Padding used for compact pills.
+        static let pillHorizontalPadding: CGFloat = 10
+        static let pillVerticalPadding: CGFloat = 6
+
         static let outerStrokeWidth: CGFloat = 0.5
         static let innerStrokeWidth: CGFloat = 0.5
 
