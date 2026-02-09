@@ -7,7 +7,7 @@ struct GlassPrimitivesDemoView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Liquid Glass")
-                .font(.system(.largeTitle, design: .rounded).weight(.semibold))
+                .font(.system(.title, design: .rounded).weight(.semibold))
 
             HStack(spacing: 16) {
                 GlassSurface {
@@ -31,14 +31,12 @@ struct GlassPrimitivesDemoView: View {
                     }
                 }
             }
-
-            Spacer(minLength: 0)
         }
-        .padding(24)
-        .frame(width: 720, height: 360)
     }
 }
 
 #Preview("Liquid Glass Demo") {
     GlassPrimitivesDemoView()
+        .padding(24)
+        .frame(width: 720, height: 360)
 }
