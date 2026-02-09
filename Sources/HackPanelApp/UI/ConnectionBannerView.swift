@@ -40,9 +40,11 @@ struct ConnectionBannerView: View {
     @State private var isShowingDetails: Bool = false
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
             Image(systemName: data.icon)
+                .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(data.color)
+                .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] }
 
             Text(data.stateText)
                 .font(.subheadline.weight(.semibold))
@@ -57,12 +59,13 @@ struct ConnectionBannerView: View {
                     .truncationMode(.tail)
             }
 
-            Spacer()
+            Spacer(minLength: 12)
 
             if let ts = data.timestampText {
                 Text(ts)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
+                    .monospacedDigit()
             }
 
             if hasDetailsOrCopy {
@@ -80,8 +83,8 @@ struct ConnectionBannerView: View {
                     .font(.caption)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .background(.thinMaterial)
         .overlay(Rectangle().frame(height: 1).foregroundStyle(.separator), alignment: .bottom)
         .accessibilityElement(children: .combine)
