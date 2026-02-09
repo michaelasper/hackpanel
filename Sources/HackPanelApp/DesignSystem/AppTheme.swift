@@ -68,11 +68,15 @@ enum AppTheme {
         static let shadowRadius: CGFloat = 14
         static let shadowYOffset: CGFloat = 8
 
-        /// When Reduce Transparency is enabled, we fall back to an opaque background.
-        static func backgroundFallbackOpacity(contrast: ColorSchemeContrast) -> Double {
+        // Reduce Transparency fallback
+        // When Reduce Transparency is enabled we avoid blur entirely and instead use
+        // a solid semantic background + subtle border so text stays legible in light/dark.
+        static let backgroundFallback: Color = Color(nsColor: .windowBackgroundColor)
+
+        static func fallbackStrokeOpacity(contrast: ColorSchemeContrast) -> Double {
             switch contrast {
-            case .increased: return 0.92
-            default: return 0.86
+            case .increased: return 0.40
+            default: return 0.26
             }
         }
     }

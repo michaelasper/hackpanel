@@ -25,7 +25,7 @@ struct GlassSurface<Content: View>: View {
             .overlay {
                 shape
                     .strokeBorder(
-                        .white.opacity(AppTheme.Glass.outerStrokeOpacity(contrast: colorSchemeContrast)),
+                        strokeColor.opacity(outerStrokeOpacity),
                         lineWidth: AppTheme.Glass.outerStrokeWidth
                     )
             }
@@ -33,7 +33,7 @@ struct GlassSurface<Content: View>: View {
                 shape
                     .inset(by: 1)
                     .strokeBorder(
-                        .white.opacity(AppTheme.Glass.innerStrokeOpacity(contrast: colorSchemeContrast)),
+                        strokeColor.opacity(innerStrokeOpacity),
                         lineWidth: AppTheme.Glass.innerStrokeWidth
                     )
             }
@@ -47,11 +47,27 @@ struct GlassSurface<Content: View>: View {
 
     private var backgroundStyle: some ShapeStyle {
         if reduceTransparency {
-            return AnyShapeStyle(
-                Color(nsColor: .windowBackgroundColor)
-                    .opacity(AppTheme.Glass.backgroundFallbackOpacity(contrast: colorSchemeContrast))
-            )
+            return AnyShapeStyle(AppTheme.Glass.backgroundFallback)
         }
         return AnyShapeStyle(.ultraThinMaterial)
+    }
+
+    private var strokeColor: Color {
+        // In Reduce Transparency mode we use semantic strokes that work in light/dark.
+        if reduceTransparency { return Color(nsColor: .separatorColor) }
+        return .white
+    }
+
+    private var outerStrokeOpacity: Double {
+        if reduceTransparency { return AppTheme.Glass.fallbackStrokeOpacity(contrast: colorSchemeContrast) }
+        return AppTheme.Glass.outerStrokeOpacity(contrast: colorSchemeContrast)
+    }
+
+    private var innerStrokeOpacity: Double {
+        if reduceTransparency {
+            // Slightly softer inner stroke in fallback mode.
+            return AppTheme.Glass.fallbackStrokeOpacity(contrast: colorSchemeContrast) * 0.55
+        }
+        return AppTheme.Glass.innerStrokeOpacity(contrast: colorSchemeContrast)
     }
 }
