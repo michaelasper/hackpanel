@@ -1,5 +1,10 @@
 # BACKLOG
 
+**Canonical backlog is GitHub Project:** https://github.com/users/michaelasper/projects/2
+
+This file is an optional snapshot only.
+
+
 This file is **not** canonical anymore.
 
 **Canonical backlog:** GitHub Project “hackpanel” — https://github.com/users/michaelasper/projects/2
