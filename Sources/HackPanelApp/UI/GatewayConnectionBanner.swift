@@ -5,15 +5,14 @@ struct GatewayConnectionBanner: View {
 
     var body: some View {
         if shouldShow {
-            content
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(.ultraThinMaterial)
-                .overlay(alignment: .bottom) {
-                    Divider().opacity(0.25)
-                }
-                .frame(maxWidth: .infinity)
-                .transition(.move(edge: .top).combined(with: .opacity))
+            GlassSurface {
+                content
+                    .padding(.horizontal, AppTheme.Glass.bannerHorizontalPadding)
+                    .padding(.vertical, AppTheme.Glass.bannerVerticalPadding)
+            }
+            .padding(.horizontal, AppTheme.Glass.bannerHorizontalPadding)
+            .frame(maxWidth: .infinity)
+            .transition(.move(edge: .top).combined(with: .opacity))
         }
     }
 

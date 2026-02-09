@@ -40,53 +40,53 @@ struct ConnectionBannerView: View {
     @State private var isShowingDetails: Bool = false
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Image(systemName: data.icon)
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(data.color)
-                .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] }
+        GlassSurface {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Image(systemName: data.icon)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(data.color)
+                    .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] }
 
-            Text(data.stateText)
-                .font(.subheadline.weight(.semibold))
+                Text(data.stateText)
+                    .font(.subheadline.weight(.semibold))
 
-            if let message = data.message, !message.isEmpty {
-                Text("—")
-                    .foregroundStyle(.secondary)
-                Text(message)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                if let message = data.message, !message.isEmpty {
+                    Text("—")
+                        .foregroundStyle(.secondary)
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+
+                Spacer(minLength: 12)
+
+                if let ts = data.timestampText {
+                    Text(ts)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+
+                if hasDetailsOrCopy {
+                    Button("Details") { isShowingDetails = true }
+                        .buttonStyle(.borderless)
+                        .font(.caption)
+                        .popover(isPresented: $isShowingDetails) {
+                            errorDetailsView
+                        }
+                }
+
+                if data.showsOpenSettings, let onOpenSettings {
+                    Button("Open Settings") { onOpenSettings() }
+                        .buttonStyle(.link)
+                        .font(.caption)
+                }
             }
-
-            Spacer(minLength: 12)
-
-            if let ts = data.timestampText {
-                Text(ts)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-
-            if hasDetailsOrCopy {
-                Button("Details") { isShowingDetails = true }
-                    .buttonStyle(.borderless)
-                    .font(.caption)
-                    .popover(isPresented: $isShowingDetails) {
-                        errorDetailsView
-                    }
-            }
-
-            if data.showsOpenSettings, let onOpenSettings {
-                Button("Open Settings") { onOpenSettings() }
-                    .buttonStyle(.link)
-                    .font(.caption)
-            }
+            .padding(.horizontal, AppTheme.Glass.bannerHorizontalPadding)
+            .padding(.vertical, AppTheme.Glass.bannerVerticalPadding)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(.thinMaterial)
-        .overlay(Rectangle().frame(height: 1).foregroundStyle(.separator), alignment: .bottom)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .contextMenu {
