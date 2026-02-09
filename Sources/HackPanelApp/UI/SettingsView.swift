@@ -67,9 +67,7 @@ struct SettingsView: View {
             }
 
             Section("Appearance") {
-                Text("Liquid glass defaults will live here (blur intensity, contrast, reduce motion).")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                GlassPrimitivesDemoView()
             }
         }
         .padding(24)
