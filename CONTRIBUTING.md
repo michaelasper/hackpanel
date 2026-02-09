@@ -15,3 +15,10 @@
 - Open `Package.swift` in Xcode.
 - Run `HackPanelApp`.
 - Tests: `swift test`.
+
+### SPM sanity check (matches CI)
+Run the same commands CI runs:
+
+```bash
+./Scripts/spm_sanity_check.sh
+```
