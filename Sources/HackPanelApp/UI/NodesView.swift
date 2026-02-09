@@ -13,7 +13,9 @@ final class NodesViewModel: ObservableObject {
                 // Online first, then offline, then unknown.
                 return lhs.state.sortRank < rhs.state.sortRank
             }
-            if lhs.name != rhs.name { return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending }
+            if lhs.name != rhs.name {
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
             return lhs.id < rhs.id
         }
     }
@@ -51,6 +53,30 @@ struct NodesView: View {
         _model = StateObject(wrappedValue: NodesViewModel(gateway: gateway))
     }
 
+    private var shouldShowGatewayUnavailableState: Bool {
+        // If we're disconnected/auth-failed and we have no data to show, make it obvious.
+        connection.state != .connected && model.nodes.isEmpty && !model.isLoading
+    }
+
+    private var gatewayUnavailableTitle: String {
+        connection.state == .authFailed ? "Authentication required" : "Gateway unavailable"
+    }
+
+    private var gatewayUnavailableIcon: String {
+        connection.state == .authFailed ? "lock.slash" : "wifi.exclamationmark"
+    }
+
+    private var gatewayUnavailableDescription: String {
+        switch connection.state {
+        case .authFailed:
+            return "Update your gateway token in Settings, then retry."
+        case .disconnected, .reconnecting:
+            return "Check your gateway URL in Settings, or try again."
+        case .connected:
+            return ""
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -66,12 +92,37 @@ struct NodesView: View {
             }
 
             if let error = model.errorMessage {
-                Text(error)
-                    .foregroundStyle(.red)
+                GlassCard {
+                    HStack(spacing: 10) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+                        Text(error)
+                            .font(.body)
+                    }
+                }
             }
 
-            if model.nodes.isEmpty, !model.isLoading, model.errorMessage == nil {
-                ContentUnavailableView("No paired nodes", systemImage: "sensor.tag.radiowaves.forward")
+            if shouldShowGatewayUnavailableState {
+                ContentUnavailableView {
+                    Label(gatewayUnavailableTitle, systemImage: gatewayUnavailableIcon)
+                } description: {
+                    Text(gatewayUnavailableDescription)
+                } actions: {
+                    Button("Retry now") {
+                        connection.retryNow()
+                        Task { await model.refresh() }
+                    }
+                    .disabled(model.isLoading)
+                }
+            } else if model.nodes.isEmpty, !model.isLoading, model.errorMessage == nil {
+                ContentUnavailableView {
+                    Label("No paired nodes", systemImage: "sensor.tag.radiowaves.forward")
+                } description: {
+                    Text("Pair a node in your gateway, then refresh.")
+                } actions: {
+                    Button("Refresh") { Task { await model.refresh() } }
+                        .disabled(model.isLoading)
+                }
             } else {
                 List(model.sortedNodes) { node in
                     HStack(alignment: .firstTextBaseline, spacing: 12) {
