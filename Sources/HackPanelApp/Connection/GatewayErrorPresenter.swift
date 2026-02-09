@@ -14,7 +14,7 @@ enum GatewayErrorPresenter {
             case .timedOut(let operation):
                 return "Gateway timed out while \(operation)."
             case .unexpectedFrame:
-                return "Gateway returned an unexpected response. Check Gateway version and try again."
+                return "Gateway returned an unexpected response. Check Gateway version and reconnect."
             case .gatewayError(let code, let message, _):
                 if looksLikeAuthFailure(code: code, message: message) {
                     return "Authentication failed. Check your Gateway token."
