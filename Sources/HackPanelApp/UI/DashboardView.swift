@@ -69,11 +69,46 @@ struct DashboardView: View {
                 }
 
                 GlassCard {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Gateway")
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Gateway health")
                             .font(.title3.weight(.semibold))
+
                         HStack(spacing: 12) {
-                            StatusPill(ok: model.status?.ok)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Connection")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                Text(connection.state.displayName)
+                                    .font(.body.weight(.medium))
+                            }
+
+                            Divider().opacity(0.25)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Status")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                StatusPill(ok: model.status?.ok)
+                            }
+
+                            Spacer()
+
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text("Last check")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                if let last = connection.lastHealthCheckAt {
+                                    Text(last, format: .dateTime.month().day().hour().minute().second())
+                                        .font(.caption.weight(.medium))
+                                } else {
+                                    Text("Never")
+                                        .font(.caption.weight(.medium))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+
+                        HStack(spacing: 12) {
                             Text(model.status?.version ?? "Unknown version")
                                 .font(.body)
                             Spacer()

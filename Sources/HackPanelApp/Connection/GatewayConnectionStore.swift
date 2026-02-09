@@ -169,6 +169,7 @@ final class GatewayConnectionStore: ObservableObject {
         // Attempt immediately.
         while !Task.isCancelled {
             do {
+                lastHealthCheckAt = Date()
                 _ = try await client.fetchStatus()
                 consecutiveFailures = 0
                 clearErrorOnSuccess()
@@ -248,6 +249,7 @@ final class GatewayConnectionStore: ObservableObject {
     }
 
     private func trackCall<T>(_ work: () async throws -> T) async throws -> T {
+        lastHealthCheckAt = Date()
         do {
             let value = try await work()
             consecutiveFailures = 0
