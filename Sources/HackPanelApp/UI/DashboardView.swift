@@ -164,20 +164,11 @@ struct StatusPill: View {
             }
         }()
 
-        GlassSurface {
+        GlassPill(accent: color) {
             Text(text)
                 .font(AppTheme.Typography.captionEmphasis)
                 .padding(.horizontal, AppTheme.Glass.pillHorizontalPadding)
                 .padding(.vertical, AppTheme.Glass.pillVerticalPadding)
-        }
-        .clipShape(Capsule())
-        .overlay {
-            Capsule()
-                .fill(color.opacity(0.10))
-        }
-        .overlay {
-            Capsule()
-                .strokeBorder(color.opacity(0.35), lineWidth: 1)
         }
         .accessibilityLabel("Gateway status: \(text)")
     }
