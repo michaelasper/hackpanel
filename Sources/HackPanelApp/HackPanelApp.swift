@@ -4,7 +4,7 @@ import HackPanelGatewayMocks
 
 @main
 struct HackPanelApp: App {
-    @AppStorage("gatewayBaseURL") private var gatewayBaseURL: String = "http://127.0.0.1:18789"
+    @AppStorage("gatewayBaseURL") private var gatewayBaseURL: String = GatewayDefaults.baseURLString
     @KeychainStorage("gatewayToken") private var gatewayToken: String = ""
 
     private var client: any GatewayClient {
