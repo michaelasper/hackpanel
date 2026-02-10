@@ -9,7 +9,7 @@ struct SettingsView: View {
     // NOTE: OpenClaw Gateway multiplexes WS + HTTP on the same port (default 18789).
     // HackPanel will eventually use the Gateway WebSocket protocol (not plain REST).
     @AppStorage("gatewayBaseURL") private var gatewayBaseURL: String = "http://127.0.0.1:18789"
-    @AppStorage("gatewayToken") private var gatewayToken: String = ""
+    @KeychainStorage("gatewayToken") private var gatewayToken: String = ""
 
     @State private var copiedAt: Date?
 
