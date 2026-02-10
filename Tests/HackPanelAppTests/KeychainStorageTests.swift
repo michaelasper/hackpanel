@@ -25,7 +25,7 @@ final class KeychainStorageTests: XCTestCase {
         UserDefaults.standard.set("legacy", forKey: key)
         XCTAssertEqual(UserDefaults.standard.string(forKey: key), "legacy")
 
-        var storage = KeychainStorage(key)
+        let storage = KeychainStorage(key)
         // Force access to trigger init + migration.
         XCTAssertEqual(storage.wrappedValue, "legacy")
 
