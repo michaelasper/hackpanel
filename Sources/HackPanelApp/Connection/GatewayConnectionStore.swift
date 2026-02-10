@@ -42,6 +42,7 @@ final class GatewayConnectionStore: ObservableObject {
 
     private var monitorTask: Task<Void, Never>?
     private var countdownTask: Task<Void, Never>?
+    private var countdownToken: UUID?
 
     private var consecutiveFailures: Int = 0
 
@@ -207,11 +208,22 @@ final class GatewayConnectionStore: ObservableObject {
     }
 
     private func startCountdown(to date: Date) {
+        let token = UUID()
+        countdownToken = token
+
         countdownTask?.cancel()
         countdownTask = Task { [weak self] in
             guard let self else { return }
             while !Task.isCancelled {
+                // Guard against the cancel race: even after cancellation, a Task can still
+                // execute one more loop iteration and write stale countdownSeconds.
+                guard self.countdownToken == token else { return }
+
                 let remaining = max(0, Int(ceil(date.timeIntervalSinceNow)))
+
+                guard !Task.isCancelled else { return }
+                guard self.countdownToken == token else { return }
+
                 self.countdownSeconds = remaining
                 if remaining <= 0 { return }
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
@@ -220,6 +232,7 @@ final class GatewayConnectionStore: ObservableObject {
     }
 
     private func stopCountdown() {
+        countdownToken = nil
         countdownTask?.cancel()
         countdownTask = nil
         countdownSeconds = nil
