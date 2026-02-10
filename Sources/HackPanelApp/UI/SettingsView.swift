@@ -15,6 +15,7 @@ struct SettingsView: View {
     @State private var draftBaseURL: String = ""
     @State private var draftToken: String = ""
     @State private var validationError: String?
+    @State private var hasEditedBaseURL: Bool = false
 
     @State private var copiedAt: Date?
 
@@ -30,6 +31,10 @@ struct SettingsView: View {
             Section("Gateway") {
                 TextField("Base URL", text: $draftBaseURL)
                     .textFieldStyle(.roundedBorder)
+                    .onChange(of: draftBaseURL) { _, newValue in
+                        hasEditedBaseURL = true
+                        validationError = baseURLValidationMessage(for: newValue)
+                    }
 
                 SecureField("Token", text: $draftToken)
                     .textFieldStyle(.roundedBorder)
@@ -38,6 +43,7 @@ struct SettingsView: View {
                     Button("Apply & Reconnect") {
                         applyAndReconnect()
                     }
+                    .disabled(baseURLValidationMessage(for: draftBaseURL) != nil)
 
                     Button("Retry Now") {
                         gateway.retryNow()
@@ -52,7 +58,7 @@ struct SettingsView: View {
                     Spacer()
                 }
 
-                if let validationError {
+                if let validationError, hasEditedBaseURL {
                     Text(validationError)
                         .font(.caption)
                         .foregroundStyle(.red)
@@ -129,6 +135,15 @@ struct SettingsView: View {
         .onAppear {
             if draftBaseURL.isEmpty { draftBaseURL = gatewayBaseURL }
             if draftToken.isEmpty { draftToken = gatewayToken }
+        }
+    }
+
+    private func baseURLValidationMessage(for raw: String) -> String? {
+        switch GatewaySettingsValidator.validateBaseURL(raw) {
+        case .success:
+            return nil
+        case .failure(let error):
+            return error.message
         }
     }
 
