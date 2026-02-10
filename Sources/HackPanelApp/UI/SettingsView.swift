@@ -35,6 +35,9 @@ struct SettingsView: View {
                         hasEditedBaseURL = true
                         validationError = baseURLValidationMessage(for: newValue)
                     }
+                    .onSubmit {
+                        applyAndReconnect()
+                    }
 
                 SecureField("Token", text: $draftToken)
                     .textFieldStyle(.roundedBorder)
@@ -52,6 +55,8 @@ struct SettingsView: View {
 
                     Button("Reset to Local Default") {
                         draftBaseURL = "http://127.0.0.1:18789"
+                        hasEditedBaseURL = true
+                        validationError = baseURLValidationMessage(for: draftBaseURL)
                     }
                     .buttonStyle(.link)
 
