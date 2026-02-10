@@ -1,4 +1,5 @@
 import SwiftUI
+import HackPanelGateway
 #if os(macOS)
 import AppKit
 #endif
@@ -10,6 +11,10 @@ struct SettingsView: View {
     // HackPanel will eventually use the Gateway WebSocket protocol (not plain REST).
     @AppStorage("gatewayBaseURL") private var gatewayBaseURL: String = "http://127.0.0.1:18789"
     @KeychainStorage("gatewayToken") private var gatewayToken: String = ""
+
+    @State private var draftBaseURL: String = ""
+    @State private var draftToken: String = ""
+    @State private var validationError: String?
 
     @State private var copiedAt: Date?
 
@@ -23,11 +28,30 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Gateway") {
-                TextField("Base URL", text: $gatewayBaseURL)
+                TextField("Base URL", text: $draftBaseURL)
                     .textFieldStyle(.roundedBorder)
 
-                SecureField("Token", text: $gatewayToken)
+                SecureField("Token", text: $draftToken)
                     .textFieldStyle(.roundedBorder)
+
+                HStack {
+                    Button("Apply & Reconnect") {
+                        applyAndReconnect()
+                    }
+
+                    Button("Reset to Local Default") {
+                        draftBaseURL = "http://127.0.0.1:18789"
+                    }
+                    .buttonStyle(.link)
+
+                    Spacer()
+                }
+
+                if let validationError {
+                    Text(validationError)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
 
                 Text("HackPanel connects to the OpenClaw Gateway WebSocket RPC endpoint (same port as HTTP; default 18789). Token is optional unless your gateway requires it.")
                     .font(.caption)
@@ -97,6 +121,35 @@ struct SettingsView: View {
             }
         }
         .padding(24)
+        .onAppear {
+            if draftBaseURL.isEmpty { draftBaseURL = gatewayBaseURL }
+            if draftToken.isEmpty { draftToken = gatewayToken }
+        }
+    }
+
+    private func applyAndReconnect() {
+        let trimmedBaseURL = draftBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedToken = draftToken.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let url = URL(string: trimmedBaseURL) else {
+            validationError = "Invalid URL. Include a scheme like http://127.0.0.1:18789"
+            return
+        }
+
+        guard let scheme = url.scheme, ["http", "https"].contains(scheme.lowercased()) else {
+            validationError = "URL must start with http:// or https://"
+            return
+        }
+
+        validationError = nil
+
+        // Persist settings.
+        gatewayBaseURL = trimmedBaseURL
+        gatewayToken = trimmedToken
+
+        // Apply immediately to the live connection store.
+        let cfg = GatewayConfiguration(baseURL: url, token: trimmedToken.isEmpty ? nil : trimmedToken)
+        gateway.updateClient(LiveGatewayClient(configuration: cfg))
     }
 
     private var diagnosticsText: String {
