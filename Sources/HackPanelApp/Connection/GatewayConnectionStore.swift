@@ -173,8 +173,8 @@ final class GatewayConnectionStore: ObservableObject {
                 _ = try await client.fetchStatus()
                 consecutiveFailures = 0
                 clearErrorOnSuccess()
+                stopCountdown()
                 state = .connected
-                countdownSeconds = nil
                 refreshToken = UUID()
 
                 try await Task.sleep(nanoseconds: UInt64(pollIntervalSeconds * 1_000_000_000))
@@ -219,6 +219,12 @@ final class GatewayConnectionStore: ObservableObject {
         }
     }
 
+    private func stopCountdown() {
+        countdownTask?.cancel()
+        countdownTask = nil
+        countdownSeconds = nil
+    }
+
     private func emit(error: Error) {
         let message = GatewayErrorPresenter.message(for: error)
         let now = Date()
@@ -254,8 +260,8 @@ final class GatewayConnectionStore: ObservableObject {
             let value = try await work()
             consecutiveFailures = 0
             clearErrorOnSuccess()
+            stopCountdown()
             state = .connected
-            countdownSeconds = nil
             return value
         } catch {
             consecutiveFailures += 1
