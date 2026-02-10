@@ -39,6 +39,11 @@ struct SettingsView: View {
                         applyAndReconnect()
                     }
 
+                    Button("Retry Now") {
+                        gateway.retryNow()
+                    }
+                    .buttonStyle(.borderless)
+
                     Button("Reset to Local Default") {
                         draftBaseURL = "http://127.0.0.1:18789"
                     }
