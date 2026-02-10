@@ -9,7 +9,7 @@ struct SettingsView: View {
 
     // NOTE: OpenClaw Gateway multiplexes WS + HTTP on the same port (default 18789).
     // HackPanel will eventually use the Gateway WebSocket protocol (not plain REST).
-    @AppStorage("gatewayBaseURL") private var gatewayBaseURL: String = "http://127.0.0.1:18789"
+    @AppStorage("gatewayBaseURL") private var gatewayBaseURL: String = GatewayDefaults.baseURLString
     @KeychainStorage("gatewayToken") private var gatewayToken: String = ""
 
     @State private var draftBaseURL: String = ""
@@ -29,8 +29,9 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Gateway") {
-                TextField("Base URL", text: $draftBaseURL)
+                TextField("Gateway URL", text: $draftBaseURL)
                     .textFieldStyle(.roundedBorder)
+                    .help("Example: \(GatewayDefaults.baseURLString)")
                     .onChange(of: draftBaseURL) { _, newValue in
                         hasEditedBaseURL = true
                         validationError = baseURLValidationMessage(for: newValue)
@@ -53,8 +54,8 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.borderless)
 
-                    Button("Reset to Local Default") {
-                        draftBaseURL = "http://127.0.0.1:18789"
+                    Button("Reset to Default") {
+                        draftBaseURL = GatewayDefaults.baseURLString
                         hasEditedBaseURL = true
                         validationError = baseURLValidationMessage(for: draftBaseURL)
                     }

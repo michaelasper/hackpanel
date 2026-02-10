@@ -13,7 +13,7 @@ enum GatewaySettingsValidator {
         }
 
         guard let url = URL(string: trimmed) else {
-            return .failure(.init(message: "Invalid URL. Include a scheme like http://127.0.0.1:18789"))
+            return .failure(.init(message: "Invalid URL. Include a scheme like \(GatewayDefaults.baseURLString)"))
         }
 
         guard let scheme = url.scheme, ["http", "https"].contains(scheme.lowercased()) else {
@@ -29,7 +29,7 @@ enum GatewaySettingsValidator {
         }
 
         if let path = url.pathComponents.dropFirst().first, !path.isEmpty {
-            return .failure(.init(message: "Base URL should not include a path; use e.g. http://127.0.0.1:18789"))
+            return .failure(.init(message: "Base URL should not include a path; use e.g. \(GatewayDefaults.baseURLString)"))
         }
 
         if url.query != nil || url.fragment != nil {

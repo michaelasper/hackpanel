@@ -10,7 +10,7 @@ enum GatewayErrorPresenter {
         if let gce = error as? GatewayClientError {
             switch gce {
             case .invalidBaseURL:
-                return "Invalid Gateway URL. Include a scheme like http://127.0.0.1:18789"
+                return "Invalid Gateway URL. Include a scheme like \(GatewayDefaults.baseURLString)"
             case .timedOut(let operation):
                 return "Gateway timed out while \(operation)."
             case .unexpectedFrame:
@@ -39,7 +39,7 @@ enum GatewayErrorPresenter {
         if let urlError = error as? URLError {
             switch urlError.code {
             case .unsupportedURL, .badURL:
-                return "Invalid Gateway URL. Include a scheme like http://127.0.0.1:18789"
+                return "Invalid Gateway URL. Include a scheme like \(GatewayDefaults.baseURLString)"
             case .cannotConnectToHost, .networkConnectionLost, .dnsLookupFailed, .cannotFindHost:
                 return "Can’t reach the Gateway. Check the URL and that the Gateway is running."
             case .notConnectedToInternet:
