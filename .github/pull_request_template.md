@@ -1,5 +1,9 @@
 > Reviewers: see [Docs/PR_REVIEW.md](../Docs/PR_REVIEW.md) for the standard checklist and PR-comment template.
 
+## Reviewer loop (required)
+- [ ] When this PR is ready for feedback (CI green / buildable), add label **`needs-review`** to trigger the automated `hackpanel-reviewer` pass.
+  - If you can’t add labels, ping `#hackpanel-manager`.
+
 ## What / Why
 
 ## Screenshots / Screen recording (for UI changes)
