@@ -35,4 +35,28 @@ final class GatewayErrorPresenterTests: XCTestCase {
             "Can’t reach the Gateway. Check the URL and that the Gateway is running."
         )
     }
+
+    func testMessage_urlError_timedOut_isFriendly() {
+        let err = URLError(.timedOut)
+        XCTAssertEqual(
+            GatewayErrorPresenter.message(for: err),
+            "Gateway request timed out."
+        )
+    }
+
+    func testMessage_urlError_notConnectedToInternet_isFriendly() {
+        let err = URLError(.notConnectedToInternet)
+        XCTAssertEqual(
+            GatewayErrorPresenter.message(for: err),
+            "No network connection."
+        )
+    }
+
+    func testMessage_urlError_secureConnectionFailed_isFriendly() {
+        let err = URLError(.secureConnectionFailed)
+        XCTAssertEqual(
+            GatewayErrorPresenter.message(for: err),
+            "Secure connection to Gateway failed. If you’re using HTTPS, check certificates."
+        )
+    }
 }
