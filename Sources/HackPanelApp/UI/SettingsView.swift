@@ -153,6 +153,9 @@ struct SettingsView: View {
         // Apply immediately to the live connection store.
         let cfg = GatewayConfiguration(baseURL: url, token: trimmedToken.isEmpty ? nil : trimmedToken)
         gateway.updateClient(LiveGatewayClient(configuration: cfg))
+
+        // Kick the connection loop immediately so users get fast feedback.
+        gateway.retryNow()
     }
 
     private var diagnosticsText: String {
