@@ -131,17 +131,15 @@ struct SettingsView: View {
         let trimmedBaseURL = draftBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedToken = draftToken.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard let url = URL(string: trimmedBaseURL) else {
-            validationError = "Invalid URL. Include a scheme like http://127.0.0.1:18789"
+        let url: URL
+        switch GatewaySettingsValidator.validateBaseURL(trimmedBaseURL) {
+        case .success(let validated):
+            url = validated
+            validationError = nil
+        case .failure(let error):
+            validationError = error.message
             return
         }
-
-        guard let scheme = url.scheme, ["http", "https"].contains(scheme.lowercased()) else {
-            validationError = "URL must start with http:// or https://"
-            return
-        }
-
-        validationError = nil
 
         // Persist settings.
         gatewayBaseURL = trimmedBaseURL
