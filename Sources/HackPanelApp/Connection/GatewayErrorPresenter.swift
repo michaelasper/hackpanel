@@ -40,7 +40,7 @@ enum GatewayErrorPresenter {
             switch urlError.code {
             case .unsupportedURL, .badURL:
                 return "Invalid Gateway URL. Include a scheme like \(GatewayDefaults.baseURLString)"
-            case .cannotConnectToHost, .networkConnectionLost, .dnsLookupFailed, .cannotFindHost:
+            case .cannotConnectToHost, .networkConnectionLost, .dnsLookupFailed, .cannotFindHost, .cannotLoadFromNetwork, .resourceUnavailable:
                 return "Can’t reach the Gateway. Check the URL and that the Gateway is running."
             case .notConnectedToInternet:
                 return "No network connection."
