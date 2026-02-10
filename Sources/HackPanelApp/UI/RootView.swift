@@ -49,6 +49,9 @@ struct RootView: View {
                 }
             }
         }
+        .task {
+            gateway.start()
+        }
         .environmentObject(gateway)
         .frame(minWidth: 900, minHeight: 600)
     }
