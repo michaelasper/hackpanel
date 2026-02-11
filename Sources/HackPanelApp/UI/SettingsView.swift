@@ -408,9 +408,24 @@ struct SettingsView: View {
     }
 
     private func runTestConnection() {
-        // Don’t start if URL invalid.
-        guard baseURLValidationMessage(for: draftBaseURL) == nil else { return }
         guard !isTestingConnection else { return }
+
+        // Validate Base URL (and normalize/validate token) once up front.
+        let url: URL
+        switch GatewaySettingsValidator.validateBaseURL(draftBaseURL) {
+        case .success(let validated):
+            url = validated
+        case .failure:
+            return
+        }
+
+        let token: String
+        switch GatewaySettingsValidator.validateToken(draftToken) {
+        case .success(let validated):
+            token = validated
+        case .failure:
+            return
+        }
 
         isTestingConnection = true
         testConnectionResult = nil
@@ -420,7 +435,16 @@ struct SettingsView: View {
             defer { isTestingConnection = false }
 
             do {
-                try await gateway.testConnection()
+                if gatewayAutoApply {
+                    // Auto-apply ON: draft is (or will soon be) applied; use the live store client.
+                    try await gateway.testConnection()
+                } else {
+                    // Auto-apply OFF: explicitly test the *draft* values without persisting/applying.
+                    let cfg = GatewayConfiguration(baseURL: url, token: token.isEmpty ? nil : token)
+                    let client = LiveGatewayClient(configuration: cfg)
+                    _ = try await client.fetchStatus()
+                }
+
                 testConnectionResult = GatewayTestConnectionPresenter.presentSuccess()
             } catch {
                 testConnectionResult = GatewayTestConnectionPresenter.present(error: error)
