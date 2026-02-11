@@ -53,6 +53,7 @@ struct RootView: View {
             gateway.start()
         }
         .environmentObject(gateway)
+        .environment(\.openSettings, { route = .settings })
         .frame(minWidth: 900, minHeight: 600)
     }
 
