@@ -14,4 +14,4 @@ They are used by unit tests to validate decoding behavior without needing a live
 ## Notes
 
 - Some frames differ by Gateway version (e.g. `node.list` can be `{ "nodes": [...] }`, `{ "items": [...] }`, or directly `[ ... ]`). Add fixtures for each observed shape.
-- `connect.challenge` is currently a **best guess** fixture. If you capture a real frame, update `connect_challenge.json` and tighten assertions in `GatewayFrameContractDecodingTests`.
+- `connect.challenge` fixture is aligned to the documented Gateway protocol shape (see `docs/gateway/protocol.md` in `openclaw/openclaw`). If a live capture differs, update `connect_challenge.json` + `GatewayFrameContractDecodingTests` accordingly.
