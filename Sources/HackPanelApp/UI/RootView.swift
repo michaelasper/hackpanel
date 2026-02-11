@@ -10,6 +10,7 @@ struct RootView: View {
     }()
     enum Route: Hashable {
         case overview
+        case timeline
         case nodes
         case providers
         case settings
@@ -35,6 +36,7 @@ struct RootView: View {
             NavigationSplitView {
                 List(selection: $route) {
                     NavigationLink("Overview", value: Route.overview)
+                    NavigationLink("Timeline", value: Route.timeline)
                     NavigationLink("Nodes", value: Route.nodes)
                     NavigationLink("Providers", value: Route.providers)
                     NavigationLink("Settings", value: Route.settings)
@@ -44,6 +46,8 @@ struct RootView: View {
                 switch route ?? .overview {
                 case .overview:
                     DashboardView(gateway: gateway)
+                case .timeline:
+                    OperatorTimelineView(gateway: gateway, onOpenSettings: { route = .settings })
                 case .nodes:
                     NodesView(gateway: gateway, onOpenSettings: { route = .settings })
                 case .providers:
