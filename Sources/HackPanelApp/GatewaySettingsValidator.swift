@@ -20,13 +20,10 @@ enum GatewaySettingsValidator {
             return .failure(.init(message: "URL must start with http:// or https://"))
         }
 
-        guard url.host != nil else {
+        guard let host = url.host, !host.isEmpty else {
             return .failure(.init(message: "URL must include a host (e.g. 127.0.0.1)"))
         }
 
-        guard url.port != nil else {
-            return .failure(.init(message: "URL must include a port (e.g. :18789)"))
-        }
 
         if let path = url.pathComponents.dropFirst().first, !path.isEmpty {
             return .failure(.init(message: "Base URL should not include a path; use e.g. \(GatewayDefaults.baseURLString)"))
