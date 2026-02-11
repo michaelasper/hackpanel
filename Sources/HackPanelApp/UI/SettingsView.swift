@@ -267,6 +267,28 @@ struct SettingsView: View {
                                 }
                             }
 
+                            Divider()
+
+                            LabeledContent("Last refresh attempt") {
+                                Text(gateway.lastRefreshAttemptAt.map { Self.uiTimestampFormatter.string(from: $0) } ?? "—")
+                            }
+
+                            LabeledContent("Last refresh result") {
+                                Text(gateway.lastRefreshResult ?? "—")
+                            }
+
+                            LabeledContent("Next scheduled refresh") {
+                                Text(gateway.nextScheduledRefreshAt.map { Self.uiTimestampFormatter.string(from: $0) } ?? "—")
+                            }
+
+                            LabeledContent("Current backoff") {
+                                if let s = gateway.currentBackoffSeconds {
+                                    Text("\(String(format: "%.1f", s))s")
+                                } else {
+                                    Text("—")
+                                }
+                            }
+
                             Button {
                                 copyToPasteboard(settingsSummaryText)
                                 copiedSummaryAt = Date()
