@@ -32,6 +32,11 @@ final class GatewayConnectionStore: ObservableObject {
     @Published private(set) var countdownSeconds: Int?
     @Published private(set) var lastHealthCheckAt: Date?
 
+    /// Best-effort recent log lines for support/diagnostics export.
+    ///
+    /// Intentionally avoids secrets (token) and avoids full URLs.
+    @Published private(set) var recentLogLines: [String] = []
+
     var lastErrorMessage: String? { lastError?.message }
     var lastErrorAt: Date? { lastError?.lastEmittedAt }
 
@@ -55,6 +60,8 @@ final class GatewayConnectionStore: ObservableObject {
     private let baseBackoffSeconds: TimeInterval = 1
     private let maxBackoffSeconds: TimeInterval = 30
     private let errorDedupeWindowSeconds: TimeInterval = 10
+
+    private let maxRecentLogLines: Int = 400
 
     init(client: any GatewayClient) {
         self.client = client
@@ -140,6 +147,7 @@ final class GatewayConnectionStore: ObservableObject {
 
     func start() {
         guard monitorTask == nil else { return }
+        log("monitor: start")
 
         monitorTask = Task { [weak self] in
             guard let self else { return }
@@ -148,6 +156,7 @@ final class GatewayConnectionStore: ObservableObject {
     }
 
     func stop() {
+        log("monitor: stop")
         monitorTask?.cancel()
         monitorTask = nil
         countdownTask?.cancel()
@@ -155,6 +164,7 @@ final class GatewayConnectionStore: ObservableObject {
     }
 
     func retryNow() {
+        log("user: retryNow")
         consecutiveFailures = max(consecutiveFailures, 1) // ensure backoff is active
         state = .reconnecting(nextRetryAt: Date())
         countdownSeconds = 0
@@ -166,6 +176,7 @@ final class GatewayConnectionStore: ObservableObject {
     }
 
     func updateClient(_ client: any GatewayClient) {
+        log("client: update")
         self.client = client
         retryNow()
     }
@@ -174,6 +185,7 @@ final class GatewayConnectionStore: ObservableObject {
     ///
     /// Used by Settings "Test connection" without altering the monitor loop/state.
     func testConnection() async throws {
+        log("settings: testConnection")
         lastHealthCheckAt = Date()
         _ = try await client.fetchStatus()
     }
@@ -184,6 +196,7 @@ final class GatewayConnectionStore: ObservableObject {
             do {
                 // Use the coalesced fetchStatus path so view-initiated refreshes don't cause parallel health checks.
                 _ = try await fetchStatus()
+                log("monitor: fetchStatus ok")
                 consecutiveFailures = 0
                 clearErrorOnSuccess()
                 stopCountdown()
@@ -198,6 +211,7 @@ final class GatewayConnectionStore: ObservableObject {
                 state = .disconnected
 
                 let delay = computeBackoffDelaySeconds(failureCount: consecutiveFailures)
+                log("monitor: fetchStatus failed; backoff=\(String(format: "%.1f", delay))s")
                 let nextRetryAt = Date().addingTimeInterval(delay)
                 state = .reconnecting(nextRetryAt: nextRetryAt)
                 startCountdown(to: nextRetryAt)
@@ -252,6 +266,7 @@ final class GatewayConnectionStore: ObservableObject {
 
     private func emit(error: Error) {
         let message = GatewayErrorPresenter.message(for: error)
+        log("error: \(message)")
         let now = Date()
 
         if var current = lastError, current.message == message {
@@ -269,6 +284,15 @@ final class GatewayConnectionStore: ObservableObject {
 
     private func clearErrorOnSuccess() {
         lastError = nil
+    }
+
+    private func log(_ message: String, now: Date = Date()) {
+        // Keep it deterministic and support-friendly.
+        let line = "\(ISO8601DateFormatter().string(from: now)) \(message)"
+        recentLogLines.append(line)
+        if recentLogLines.count > maxRecentLogLines {
+            recentLogLines.removeFirst(recentLogLines.count - maxRecentLogLines)
+        }
     }
 
     func fetchStatus() async throws -> GatewayStatus {
