@@ -254,36 +254,36 @@ struct SettingsView: View {
     }
 
     private var appliedToast: some View {
-        HStack(spacing: 10) {
-            Text("Applied")
-                .font(.caption.weight(.medium))
+        GlassSurface {
+            HStack(spacing: 10) {
+                Text("Applied")
+                    .font(.caption.weight(.medium))
 
-            if canUndo {
-                Button("Undo") {
-                    undoLastApply()
+                if canUndo {
+                    Button("Undo") {
+                        undoLastApply()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .accessibilityLabel("Undo")
+                    .accessibilityHint("Revert to the previous gateway URL and token")
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            }
 
-            Spacer(minLength: 0)
+                Spacer(minLength: 0)
 
-            Button {
-                showAppliedToast = false
-            } label: {
-                Image(systemName: "xmark")
+                Button {
+                    showAppliedToast = false
+                } label: {
+                    Image(systemName: "xmark")
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Dismiss")
+                .accessibilityHint("Hide the Applied confirmation")
             }
-            .buttonStyle(.borderless)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(.white.opacity(0.12))
-        )
         .frame(maxWidth: 420)
-        .shadow(radius: 18, y: 8)
     }
 
     private var canUndo: Bool {
