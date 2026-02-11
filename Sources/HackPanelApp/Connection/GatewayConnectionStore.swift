@@ -32,6 +32,12 @@ final class GatewayConnectionStore: ObservableObject {
     @Published private(set) var countdownSeconds: Int?
     @Published private(set) var lastHealthCheckAt: Date?
 
+    // Auto-refresh diagnostics (for copy/paste debugging)
+    @Published private(set) var lastRefreshAttemptAt: Date?
+    @Published private(set) var lastRefreshResult: String?
+    @Published private(set) var nextScheduledRefreshAt: Date?
+    @Published private(set) var currentBackoffSeconds: TimeInterval?
+
     var lastErrorMessage: String? { lastError?.message }
     var lastErrorAt: Date? { lastError?.lastEmittedAt }
 
@@ -44,7 +50,7 @@ final class GatewayConnectionStore: ObservableObject {
     private var countdownTask: Task<Void, Never>?
     private var countdownToken: UUID?
 
-    private var consecutiveFailures: Int = 0
+    private var refreshScheduler: RefreshBackoffScheduler = .init()
 
     // Coalesce duplicate refresh triggers so we never execute >1 concurrent request per endpoint.
     private var inFlightStatusTask: Task<GatewayStatus, Error>?
@@ -52,12 +58,13 @@ final class GatewayConnectionStore: ObservableObject {
 
     // Tunables
     private let pollIntervalSeconds: TimeInterval = 15
-    private let baseBackoffSeconds: TimeInterval = 1
-    private let maxBackoffSeconds: TimeInterval = 30
     private let errorDedupeWindowSeconds: TimeInterval = 10
 
     init(client: any GatewayClient) {
         self.client = client
+        self.refreshScheduler = RefreshBackoffScheduler(
+            config: .init(pollIntervalSeconds: pollIntervalSeconds)
+        )
 
         #if DEBUG
         applyForcedStateIfPresent(environment: ProcessInfo.processInfo.environment, now: Date())
@@ -155,7 +162,10 @@ final class GatewayConnectionStore: ObservableObject {
     }
 
     func retryNow() {
-        consecutiveFailures = max(consecutiveFailures, 1) // ensure backoff is active
+        refreshScheduler.resetForManualRetry()
+        currentBackoffSeconds = refreshScheduler.observation.currentBackoffSeconds
+        nextScheduledRefreshAt = refreshScheduler.observation.nextScheduledRefreshAt
+
         state = .reconnecting(nextRetryAt: Date())
         countdownSeconds = 0
         refreshToken = UUID()
@@ -182,9 +192,17 @@ final class GatewayConnectionStore: ObservableObject {
         // Attempt immediately.
         while !Task.isCancelled {
             do {
+                refreshScheduler.recordAttempt()
+                lastRefreshAttemptAt = refreshScheduler.observation.lastRefreshAttemptAt
+
                 // Use the coalesced fetchStatus path so view-initiated refreshes don't cause parallel health checks.
                 _ = try await fetchStatus()
-                consecutiveFailures = 0
+
+                refreshScheduler.recordSuccess()
+                lastRefreshResult = refreshScheduler.observation.lastRefreshResult
+                currentBackoffSeconds = refreshScheduler.observation.currentBackoffSeconds
+                nextScheduledRefreshAt = refreshScheduler.observation.nextScheduledRefreshAt
+
                 clearErrorOnSuccess()
                 stopCountdown()
                 state = .connected
@@ -192,12 +210,16 @@ final class GatewayConnectionStore: ObservableObject {
 
                 try await Task.sleep(nanoseconds: UInt64(pollIntervalSeconds * 1_000_000_000))
             } catch {
-                consecutiveFailures += 1
                 emit(error: error)
+
+                let summary = "failure: \(GatewayErrorPresenter.message(for: error))"
+                let delay = refreshScheduler.recordFailure(summary: summary)
+                lastRefreshResult = refreshScheduler.observation.lastRefreshResult
+                currentBackoffSeconds = refreshScheduler.observation.currentBackoffSeconds
+                nextScheduledRefreshAt = refreshScheduler.observation.nextScheduledRefreshAt
 
                 state = .disconnected
 
-                let delay = computeBackoffDelaySeconds(failureCount: consecutiveFailures)
                 let nextRetryAt = Date().addingTimeInterval(delay)
                 state = .reconnecting(nextRetryAt: nextRetryAt)
                 startCountdown(to: nextRetryAt)
@@ -208,15 +230,6 @@ final class GatewayConnectionStore: ObservableObject {
                 if Task.isCancelled { return }
             }
         }
-    }
-
-    private func computeBackoffDelaySeconds(failureCount: Int) -> TimeInterval {
-        let capped = min(8, max(1, failureCount))
-        let exp = pow(2.0, Double(capped - 1))
-        let raw = min(maxBackoffSeconds, baseBackoffSeconds * exp)
-        // Jitter in [0.6, 1.4]
-        let jitter = Double.random(in: 0.6...1.4)
-        return max(0.5, min(maxBackoffSeconds, raw * jitter))
     }
 
     private func startCountdown(to date: Date) {
@@ -301,13 +314,11 @@ final class GatewayConnectionStore: ObservableObject {
         lastHealthCheckAt = Date()
         do {
             let value = try await work()
-            consecutiveFailures = 0
             clearErrorOnSuccess()
             stopCountdown()
             state = .connected
             return value
         } catch {
-            consecutiveFailures += 1
             emit(error: error)
             if isAuthFailure(error: error) {
                 state = .authFailed

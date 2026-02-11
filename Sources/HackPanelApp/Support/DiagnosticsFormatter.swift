@@ -17,6 +17,12 @@ enum DiagnosticsFormatter {
         /// If present, indicates when the next reconnect attempt is allowed.
         var reconnectBackoffUntil: Date?
 
+        // Auto-refresh diagnostics (for copy/paste debugging)
+        var lastRefreshAttemptAt: Date?
+        var lastRefreshResult: String?
+        var nextScheduledRefreshAt: Date?
+        var currentBackoffSeconds: TimeInterval?
+
         init(
             appVersion: String,
             appBuild: String,
@@ -27,7 +33,11 @@ enum DiagnosticsFormatter {
             connectionState: String,
             lastErrorMessage: String? = nil,
             lastErrorAt: Date? = nil,
-            reconnectBackoffUntil: Date? = nil
+            reconnectBackoffUntil: Date? = nil,
+            lastRefreshAttemptAt: Date? = nil,
+            lastRefreshResult: String? = nil,
+            nextScheduledRefreshAt: Date? = nil,
+            currentBackoffSeconds: TimeInterval? = nil
         ) {
             self.appVersion = appVersion
             self.appBuild = appBuild
@@ -39,6 +49,10 @@ enum DiagnosticsFormatter {
             self.lastErrorMessage = lastErrorMessage
             self.lastErrorAt = lastErrorAt
             self.reconnectBackoffUntil = reconnectBackoffUntil
+            self.lastRefreshAttemptAt = lastRefreshAttemptAt
+            self.lastRefreshResult = lastRefreshResult
+            self.nextScheduledRefreshAt = nextScheduledRefreshAt
+            self.currentBackoffSeconds = currentBackoffSeconds
         }
     }
 
@@ -73,6 +87,19 @@ enum DiagnosticsFormatter {
         if let until = input.reconnectBackoffUntil {
             let remaining = max(0, Int(until.timeIntervalSince(now).rounded(.up)))
             lines.append("Reconnect backoff: \(remaining)s remaining (until \(iso8601(until)))")
+        }
+
+        if input.lastRefreshAttemptAt != nil || input.lastRefreshResult != nil || input.nextScheduledRefreshAt != nil {
+            lines.append("")
+            lines.append("Auto-refresh")
+            lines.append("Last refresh attempt: \(input.lastRefreshAttemptAt.map(iso8601) ?? "(unknown)")")
+            lines.append("Last refresh result: \(input.lastRefreshResult ?? "(unknown)")")
+            if let backoff = input.currentBackoffSeconds {
+                lines.append(String(format: "Current backoff: %.1fs", backoff))
+            }
+            if let next = input.nextScheduledRefreshAt {
+                lines.append("Next scheduled refresh: \(iso8601(next))")
+            }
         }
 
         return lines.joined(separator: "\n") + "\n"

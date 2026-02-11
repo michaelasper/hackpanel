@@ -767,7 +767,11 @@ struct SettingsView: View {
                 connectionState: gateway.state.displayName,
                 lastErrorMessage: gateway.lastErrorMessage,
                 lastErrorAt: gateway.lastErrorAt,
-                reconnectBackoffUntil: reconnectBackoffUntil
+                reconnectBackoffUntil: reconnectBackoffUntil,
+                lastRefreshAttemptAt: gateway.lastRefreshAttemptAt,
+                lastRefreshResult: gateway.lastRefreshResult,
+                nextScheduledRefreshAt: gateway.nextScheduledRefreshAt,
+                currentBackoffSeconds: gateway.currentBackoffSeconds
             )
         )
     }
