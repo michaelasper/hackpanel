@@ -17,6 +17,10 @@ enum DiagnosticsFormatter {
         /// If present, indicates when the next reconnect attempt is allowed.
         var reconnectBackoffUntil: Date?
 
+        // Refresh scheduling diagnostics.
+        var isRefreshPaused: Bool
+        var lastActiveAt: Date?
+
         init(
             appVersion: String,
             appBuild: String,
@@ -27,7 +31,9 @@ enum DiagnosticsFormatter {
             connectionState: String,
             lastErrorMessage: String? = nil,
             lastErrorAt: Date? = nil,
-            reconnectBackoffUntil: Date? = nil
+            reconnectBackoffUntil: Date? = nil,
+            isRefreshPaused: Bool = false,
+            lastActiveAt: Date? = nil
         ) {
             self.appVersion = appVersion
             self.appBuild = appBuild
@@ -39,6 +45,8 @@ enum DiagnosticsFormatter {
             self.lastErrorMessage = lastErrorMessage
             self.lastErrorAt = lastErrorAt
             self.reconnectBackoffUntil = reconnectBackoffUntil
+            self.isRefreshPaused = isRefreshPaused
+            self.lastActiveAt = lastActiveAt
         }
     }
 
@@ -73,6 +81,12 @@ enum DiagnosticsFormatter {
         if let until = input.reconnectBackoffUntil {
             let remaining = max(0, Int(until.timeIntervalSince(now).rounded(.up)))
             lines.append("Reconnect backoff: \(remaining)s remaining (until \(iso8601(until)))")
+        }
+
+        lines.append("")
+        lines.append("Refresh paused: \(input.isRefreshPaused ? "Yes" : "No")")
+        if let lastActiveAt = input.lastActiveAt {
+            lines.append("Last active at: \(iso8601(lastActiveAt))")
         }
 
         return lines.joined(separator: "\n") + "\n"
