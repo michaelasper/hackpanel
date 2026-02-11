@@ -24,6 +24,7 @@ struct SettingsView: View {
     @State private var hasEditedToken: Bool = false
 
     @State private var copiedAt: Date?
+    @State private var copiedSummaryAt: Date?
 
     // Profiles: create/edit/delete UI
     @State private var showCreateProfileSheet: Bool = false
@@ -255,6 +256,19 @@ struct SettingsView: View {
                             }
 
                             Button {
+                                copyToPasteboard(settingsSummaryText)
+                                copiedSummaryAt = Date()
+                            } label: {
+                                Label("Copy Redacted Settings Summary", systemImage: "doc.on.doc")
+                            }
+
+                            if let copiedSummaryAt {
+                                Text("Summary copied at \(Self.uiTimestampFormatter.string(from: copiedSummaryAt)).")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Button {
                                 copyToPasteboard(diagnosticsText)
                                 copiedAt = Date()
                             } label: {
@@ -262,7 +276,7 @@ struct SettingsView: View {
                             }
 
                             if let copiedAt {
-                                Text("Copied at \(Self.uiTimestampFormatter.string(from: copiedAt)).")
+                                Text("Diagnostics copied at \(Self.uiTimestampFormatter.string(from: copiedAt)).")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -727,6 +741,18 @@ struct SettingsView: View {
 
             testConnectionAt = Date()
         }
+    }
+
+    private var settingsSummaryText: String {
+        DiagnosticsFormatter.formatSettingsSummary(
+            appVersion: appVersion,
+            appBuild: appBuild,
+            osVersion: ProcessInfo.processInfo.operatingSystemVersionString,
+            gatewayBaseURL: gatewayBaseURL,
+            gatewayAutoApply: gatewayAutoApply,
+            connectionState: gateway.state.displayName,
+            lastErrorMessage: gateway.lastErrorMessage
+        )
     }
 
     private var diagnosticsText: String {

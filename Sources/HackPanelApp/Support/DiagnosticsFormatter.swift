@@ -78,6 +78,38 @@ enum DiagnosticsFormatter {
         return lines.joined(separator: "\n") + "\n"
     }
 
+    /// Formats a short, redacted settings summary suitable for support/debug.
+    ///
+    /// Intentionally excludes the gateway token and strips URL details down to scheme/host/port.
+    static func formatSettingsSummary(
+        appVersion: String,
+        appBuild: String,
+        osVersion: String,
+        gatewayBaseURL: String,
+        gatewayAutoApply: Bool,
+        connectionState: String,
+        lastErrorMessage: String?
+    ) -> String {
+        var lines: [String] = []
+        lines.append("HackPanel settings summary")
+        lines.append("App version: \(appVersion) (\(appBuild))")
+        lines.append("OS: \(osVersion)")
+        lines.append("Gateway base URL: \(safeHostPortURLString(gatewayBaseURL))")
+        lines.append("Auto-apply: \(gatewayAutoApply ? "On" : "Off")")
+        lines.append("Connection state: \(connectionState)")
+        lines.append("Last error: \((lastErrorMessage?.isEmpty == false) ? lastErrorMessage! : "(none)")")
+        return lines.joined(separator: "\n") + "\n"
+    }
+
+    private static func safeHostPortURLString(_ raw: String) -> String {
+        guard let url = URL(string: raw) else { return "(invalid)" }
+        guard let scheme = url.scheme, let host = url.host else { return "(invalid)" }
+        if let port = url.port {
+            return "\(scheme)://\(host):\(port)"
+        }
+        return "\(scheme)://\(host)"
+    }
+
     static func redactToken(_ raw: String) -> String {
         let token = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !token.isEmpty else { return "(empty)" }
