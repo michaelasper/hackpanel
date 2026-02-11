@@ -12,6 +12,7 @@ struct RootView: View {
         case overview
         case nodes
         case providers
+        case timeline
         case settings
     }
 
@@ -40,6 +41,7 @@ struct RootView: View {
                     NavigationLink("Overview", value: Route.overview)
                     NavigationLink("Nodes", value: Route.nodes)
                     NavigationLink("Providers", value: Route.providers)
+                    NavigationLink("Timeline", value: Route.timeline)
                     NavigationLink("Settings", value: Route.settings)
                 }
                 .navigationSplitViewColumnWidth(min: 180, ideal: 220)
@@ -61,6 +63,8 @@ struct RootView: View {
                         NodesView(gateway: gateway, onOpenSettings: { route = .settings })
                     case .providers:
                         ProvidersView(onOpenSettings: { route = .settings })
+                    case .timeline:
+                        TimelineView(onOpenSettings: { route = .settings })
                     case .settings:
                         SettingsView(gateway: gateway)
                     }
