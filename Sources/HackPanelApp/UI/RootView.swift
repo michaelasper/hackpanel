@@ -19,6 +19,8 @@ struct RootView: View {
     @AppStorage("gatewayBaseURL") private var gatewayBaseURL: String = GatewayDefaults.baseURLString
     @AppStorage("hasEverConnectedToGateway") private var hasEverConnectedToGateway: Bool = false
 
+    @Environment(\.scenePhase) private var scenePhase
+
     @StateObject private var gateway: GatewayConnectionStore
     @State private var route: Route? = .overview
 
@@ -83,6 +85,9 @@ struct RootView: View {
             if newValue == .connected {
                 hasEverConnectedToGateway = true
             }
+        }
+        .onChange(of: scenePhase) { _, newValue in
+            gateway.setAppActive(newValue == .active)
         }
         .environmentObject(gateway)
         .frame(minWidth: 900, minHeight: 600)

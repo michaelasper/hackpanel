@@ -801,7 +801,9 @@ struct SettingsView: View {
                 connectionState: gateway.state.displayName,
                 lastErrorMessage: gateway.lastErrorMessage,
                 lastErrorAt: gateway.lastErrorAt,
-                reconnectBackoffUntil: reconnectBackoffUntil
+                reconnectBackoffUntil: reconnectBackoffUntil,
+                isRefreshPaused: gateway.isRefreshPaused,
+                lastActiveAt: gateway.lastActiveAt
             )
         )
     }

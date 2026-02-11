@@ -37,6 +37,10 @@ final class GatewayConnectionStore: ObservableObject {
     /// Intentionally avoids secrets (token) and avoids full URLs.
     @Published private(set) var recentLogLines: [String] = []
 
+    // Diagnostics/debug for refresh scheduling.
+    @Published private(set) var isRefreshPaused: Bool = false
+    @Published private(set) var lastActiveAt: Date?
+
     var lastErrorMessage: String? { lastError?.message }
     var lastErrorAt: Date? { lastError?.lastEmittedAt }
 
@@ -49,25 +53,48 @@ final class GatewayConnectionStore: ObservableObject {
     private var countdownTask: Task<Void, Never>?
     private var countdownToken: UUID?
 
+    // Used to interrupt sleeps when app active/inactive flips.
+    private var monitorWakeToken: UUID = UUID()
+    private var pendingImmediateRefresh: Bool = false
+
     private var consecutiveFailures: Int = 0
 
     // Coalesce duplicate refresh triggers so we never execute >1 concurrent request per endpoint.
     private var inFlightStatusTask: Task<GatewayStatus, Error>?
     private var inFlightNodesTask: Task<[NodeSummary], Error>?
 
-    // Tunables
-    private let pollIntervalSeconds: TimeInterval = 15
-    private let baseBackoffSeconds: TimeInterval = 1
-    private let maxBackoffSeconds: TimeInterval = 30
-    private let errorDedupeWindowSeconds: TimeInterval = 10
+    struct MonitorTuning: Sendable {
+        var pollIntervalSeconds: TimeInterval = 15
+        /// While app is inactive/backgrounded, use a much slower interval to avoid refresh storms.
+        var inactivePollIntervalSeconds: TimeInterval = 120
+        var baseBackoffSeconds: TimeInterval = 1
+        var maxBackoffSeconds: TimeInterval = 30
+        var errorDedupeWindowSeconds: TimeInterval = 10
+        /// Sleep granularity so we can react quickly to active/inactive changes.
+        var sleepQuantumSeconds: TimeInterval = 0.25
+    }
 
     private let maxRecentLogLines: Int = 400
 
-    init(client: any GatewayClient) {
+    private let tuning: MonitorTuning
+    private let now: @Sendable () -> Date
+    private let sleep: @Sendable (TimeInterval) async -> Void
+
+    init(
+        client: any GatewayClient,
+        tuning: MonitorTuning = MonitorTuning(),
+        now: @escaping @Sendable () -> Date = { Date() },
+        sleep: @escaping @Sendable (TimeInterval) async -> Void = { seconds in
+            try? await Task.sleep(nanoseconds: UInt64(max(0, seconds) * 1_000_000_000))
+        }
+    ) {
         self.client = client
+        self.tuning = tuning
+        self.now = now
+        self.sleep = sleep
 
         #if DEBUG
-        applyForcedStateIfPresent(environment: ProcessInfo.processInfo.environment, now: Date())
+        applyForcedStateIfPresent(environment: ProcessInfo.processInfo.environment, now: now())
         #endif
     }
 
@@ -163,6 +190,22 @@ final class GatewayConnectionStore: ObservableObject {
         countdownTask = nil
     }
 
+    /// Called by the root SwiftUI scene when app focus/foreground changes.
+    ///
+    /// When we become active again, we trigger exactly one immediate refresh, and interrupt any pending sleep.
+    func setAppActive(_ active: Bool) {
+        let wasPaused = isRefreshPaused
+        isRefreshPaused = !active
+
+        if active {
+            lastActiveAt = now()
+            if wasPaused {
+                pendingImmediateRefresh = true
+                monitorWakeToken = UUID()
+            }
+        }
+    }
+
     func retryNow() {
         log("user: retryNow")
         consecutiveFailures = max(consecutiveFailures, 1) // ensure backoff is active
@@ -203,13 +246,9 @@ final class GatewayConnectionStore: ObservableObject {
                 state = .connected
                 refreshToken = UUID()
 
-                try await Task.sleep(nanoseconds: UInt64(pollIntervalSeconds * 1_000_000_000))
+                await sleepUntilNextPoll()
             } catch {
-                consecutiveFailures += 1
-                emit(error: error)
-
-                state = .disconnected
-
+                // consecutiveFailures + lastError were already updated by `trackCall` inside `fetchStatus()`.
                 let delay = computeBackoffDelaySeconds(failureCount: consecutiveFailures)
                 log("monitor: fetchStatus failed; backoff=\(String(format: "%.1f", delay))s")
                 let nextRetryAt = Date().addingTimeInterval(delay)
@@ -217,20 +256,49 @@ final class GatewayConnectionStore: ObservableObject {
                 startCountdown(to: nextRetryAt)
 
                 // Sleep until next retry.
-                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                await sleep(delay)
 
                 if Task.isCancelled { return }
             }
         }
     }
 
+    private func sleepUntilNextPoll() async {
+        // If we just became active, trigger one immediate refresh attempt.
+        if pendingImmediateRefresh {
+            pendingImmediateRefresh = false
+            refreshToken = UUID()
+            return
+        }
+
+        let token = monitorWakeToken
+        let interval = isRefreshPaused ? tuning.inactivePollIntervalSeconds : tuning.pollIntervalSeconds
+
+        var elapsed: TimeInterval = 0
+        while !Task.isCancelled, elapsed < interval {
+            // Break early if we became active/inactive.
+            if monitorWakeToken != token {
+                return
+            }
+            if pendingImmediateRefresh {
+                pendingImmediateRefresh = false
+                refreshToken = UUID()
+                return
+            }
+
+            let quantum = min(tuning.sleepQuantumSeconds, interval - elapsed)
+            await sleep(quantum)
+            elapsed += quantum
+        }
+    }
+
     private func computeBackoffDelaySeconds(failureCount: Int) -> TimeInterval {
         let capped = min(8, max(1, failureCount))
         let exp = pow(2.0, Double(capped - 1))
-        let raw = min(maxBackoffSeconds, baseBackoffSeconds * exp)
+        let raw = min(tuning.maxBackoffSeconds, tuning.baseBackoffSeconds * exp)
         // Jitter in [0.6, 1.4]
         let jitter = Double.random(in: 0.6...1.4)
-        return max(0.5, min(maxBackoffSeconds, raw * jitter))
+        return max(0.5, min(tuning.maxBackoffSeconds, raw * jitter))
     }
 
     private func startCountdown(to date: Date) {
@@ -271,7 +339,7 @@ final class GatewayConnectionStore: ObservableObject {
 
         if var current = lastError, current.message == message {
             // Dedupe: do not re-emit identical errors too frequently (prevents banner timestamp spam).
-            if now.timeIntervalSince(current.lastEmittedAt) < errorDedupeWindowSeconds {
+            if now.timeIntervalSince(current.lastEmittedAt) < tuning.errorDedupeWindowSeconds {
                 return
             }
             current.lastEmittedAt = now
