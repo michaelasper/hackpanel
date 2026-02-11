@@ -6,6 +6,11 @@ import Foundation
 struct StatusPayload: Codable, Sendable {
     var ok: Bool?
     var version: String?
+
+    // Best-effort metadata (not guaranteed to exist on the server).
+    var build: String?
+    var commit: String?
+
     var uptimeSeconds: Double?
     var uptimeMs: Double?
 }

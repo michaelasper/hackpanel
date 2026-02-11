@@ -50,6 +50,7 @@ struct SettingsView: View {
     // Test connection
     @State private var isTestingConnection: Bool = false
     @State private var testConnectionResult: GatewayTestConnectionPresenter.PresentedResult?
+    @State private var testConnectionStatus: GatewayStatus?
     @State private var testConnectionAt: Date?
 
     // Auto-apply / undo
@@ -214,9 +215,27 @@ struct SettingsView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else if let testConnectionResult, let testConnectionAt {
-                        Text("Test result: \(testConnectionResult.message) (\(Self.uiTimestampFormatter.string(from: testConnectionAt)))")
-                            .font(.caption)
-                            .foregroundStyle(testConnectionResult.kind == .success ? .green : (testConnectionResult.kind == .unknown ? .secondary : .red))
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Test result: \(testConnectionResult.message) (\(Self.uiTimestampFormatter.string(from: testConnectionAt)))")
+                                .font(.caption)
+                                .foregroundStyle(testConnectionResult.kind == .success ? .green : (testConnectionResult.kind == .unknown ? .secondary : .red))
+
+                            if testConnectionResult.kind == .success, let status = testConnectionStatus {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Connected to:")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+
+                                    Text("Version: \(status.version ?? "Not available")")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+
+                                    Text("Build: \(status.build ?? status.commit ?? "Not available")")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
                     }
 
                     if let validationError, hasEditedBaseURL {
@@ -774,24 +793,28 @@ struct SettingsView: View {
 
         isTestingConnection = true
         testConnectionResult = nil
+        testConnectionStatus = nil
         testConnectionAt = nil
 
         Task { @MainActor in
             defer { isTestingConnection = false }
 
             do {
+                let status: GatewayStatus
                 if gatewayAutoApply {
                     // Auto-apply ON: draft is (or will soon be) applied; use the live store client.
-                    try await gateway.testConnection()
+                    status = try await gateway.testConnection()
                 } else {
                     // Auto-apply OFF: explicitly test the *draft* values without persisting/applying.
                     let cfg = GatewayConfiguration(baseURL: url, token: token.isEmpty ? nil : token)
                     let client = LiveGatewayClient(configuration: cfg)
-                    _ = try await client.fetchStatus()
+                    status = try await client.fetchStatus()
                 }
 
+                testConnectionStatus = status
                 testConnectionResult = GatewayTestConnectionPresenter.presentSuccess()
             } catch {
+                testConnectionStatus = nil
                 testConnectionResult = GatewayTestConnectionPresenter.present(error: error)
             }
 

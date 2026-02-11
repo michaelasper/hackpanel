@@ -234,10 +234,10 @@ final class GatewayConnectionStore: ObservableObject {
     /// Perform a one-shot status request against the currently-configured Gateway.
     ///
     /// Used by Settings "Test connection" without altering the monitor loop/state.
-    func testConnection() async throws {
+    func testConnection() async throws -> GatewayStatus {
         log("settings: testConnection")
         lastHealthCheckAt = Date()
-        _ = try await client.fetchStatus()
+        return try await client.fetchStatus()
     }
 
     private func runMonitorLoop() async {
