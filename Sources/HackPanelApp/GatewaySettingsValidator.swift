@@ -33,6 +33,17 @@ enum GatewaySettingsValidator {
             return .failure(.init(message: "Base URL should not include query/fragment parameters"))
         }
 
+        // If the user omits a port, assume the default Gateway port.
+        if url.port == nil {
+            guard var comps = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+                return .failure(.init(message: "Invalid URL. Include a scheme like \(GatewayDefaults.baseURLString)"))
+            }
+            comps.port = GatewayDefaults.defaultPort
+            if let ported = comps.url {
+                return .success(ported)
+            }
+        }
+
         return .success(url)
     }
 }
