@@ -60,4 +60,25 @@ final class DiagnosticsFormatterTests: XCTestCase {
         XCTAssertFalse(text.contains("super-secret-token-9999"), "Must not leak full token")
         XCTAssertTrue(text.contains("9999"), "Should include last4 for debugging")
     }
+
+    func testFormatSettingsSummary_isRedactedAndStripsURLDetails() {
+        let text = DiagnosticsFormatter.formatSettingsSummary(
+            appVersion: "1.2.3",
+            appBuild: "456",
+            osVersion: "macOS 14.0 (23A344)",
+            gatewayBaseURL: "http://example.com:18789/path?token=abc#frag",
+            gatewayAutoApply: false,
+            connectionState: "Connected",
+            lastErrorMessage: ""
+        )
+
+        XCTAssertTrue(text.contains("HackPanel settings summary"))
+        XCTAssertTrue(text.contains("App version: 1.2.3 (456)"))
+        XCTAssertTrue(text.contains("OS: macOS 14.0 (23A344)"))
+        XCTAssertTrue(text.contains("Gateway base URL: http://example.com:18789"))
+        XCTAssertFalse(text.contains("/path"), "Should not include path/query/fragment")
+        XCTAssertFalse(text.contains("token=abc"), "Should not include query")
+        XCTAssertTrue(text.contains("Auto-apply: Off"))
+        XCTAssertTrue(text.contains("Last error: (none)"))
+    }
 }
