@@ -40,7 +40,7 @@ final class GatewayConnectionStoreForcedStateTests: XCTestCase {
         XCTAssertEqual(forced.lastError?.lastEmittedAt, now)
     }
 
-    func testApplyForcedState_falseyValue_isIgnored() {
+    func testApplyForcedState_falsyValue_isIgnored() {
         let now = Date(timeIntervalSince1970: 123)
         let store = GatewayConnectionStore(client: NoopClient())
         XCTAssertEqual(store.state, .disconnected)
