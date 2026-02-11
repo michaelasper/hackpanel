@@ -1,5 +1,6 @@
 import SwiftUI
 import HackPanelGateway
+import UniformTypeIdentifiers
 #if os(macOS)
 import AppKit
 #endif
@@ -25,6 +26,9 @@ struct SettingsView: View {
 
     @State private var copiedAt: Date?
     @State private var copiedSummaryAt: Date?
+
+    @State private var exportedZipAt: Date?
+    @State private var exportErrorMessage: String?
 
     // Profiles: create/edit/delete UI
     @State private var showCreateProfileSheet: Bool = false
@@ -58,6 +62,14 @@ struct SettingsView: View {
         let df = DateFormatter()
         df.dateStyle = .medium
         df.timeStyle = .medium
+        return df
+    }()
+
+    private static let fileTimestampFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.timeZone = TimeZone(secondsFromGMT: 0)
+        df.dateFormat = "yyyyMMdd-HHmmss"
         return df
     }()
 
@@ -260,6 +272,28 @@ struct SettingsView: View {
                                 copiedSummaryAt = Date()
                             } label: {
                                 Label("Copy Redacted Settings Summary", systemImage: "doc.on.doc")
+                            }
+
+                            HStack {
+                                Button {
+                                    exportDiagnosticsZip()
+                                } label: {
+                                    Label("Export Diagnostics (.zip)", systemImage: "square.and.arrow.down")
+                                }
+
+                                if let exportedZipAt {
+                                    Text("Exported at \(Self.uiTimestampFormatter.string(from: exportedZipAt)).")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Spacer()
+                            }
+
+                            if let exportErrorMessage {
+                                Text(exportErrorMessage)
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
                             }
 
                             if let copiedSummaryAt {
@@ -772,8 +806,92 @@ struct SettingsView: View {
         )
     }
 
+    private var recentLogsText: String {
+        let lines = gateway.recentLogLines
+        guard !lines.isEmpty else {
+            return "(no recent logs captured)\n"
+        }
+        return lines.joined(separator: "\n") + "\n"
+    }
+
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
+    }
+
+    private func exportDiagnosticsZip() {
+        exportErrorMessage = nil
+
+        Task { @MainActor in
+            do {
+                let now = Date()
+
+                let bundle = try DiagnosticsExportBuilder.build(
+                    .init(
+                        appVersion: appVersion,
+                        appBuild: appBuild,
+                        osVersion: ProcessInfo.processInfo.operatingSystemVersionString,
+                        generatedAt: now,
+                        settingsSummaryText: settingsSummaryText,
+                        logsText: recentLogsText
+                    )
+                )
+
+                let fm = FileManager.default
+                let exportDir = fm.temporaryDirectory
+                    .appending(path: "hackpanel-diagnostics-\(UUID().uuidString)", directoryHint: .isDirectory)
+
+                try fm.createDirectory(at: exportDir, withIntermediateDirectories: true)
+
+                for entry in bundle.entries {
+                    let url = exportDir.appending(path: entry.filename)
+                    try entry.data.write(to: url, options: [.atomic])
+                }
+
+                let timestamp = Self.fileTimestampFormatter.string(from: now)
+                let tempZipURL = fm.temporaryDirectory.appending(path: "HackPanel-Diagnostics-\(timestamp).zip")
+                try? fm.removeItem(at: tempZipURL)
+
+                // Zip via ditto (FileManager.zipItem isn't available in all Foundation toolchains).
+                let p = Process()
+                p.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+                p.arguments = [
+                    "-c",
+                    "-k",
+                    "--sequesterRsrc",
+                    "--keepParent",
+                    exportDir.path,
+                    tempZipURL.path
+                ]
+                try p.run()
+                p.waitUntilExit()
+                guard p.terminationStatus == 0 else {
+                    throw NSError(
+                        domain: "HackPanel.DiagnosticsExport",
+                        code: Int(p.terminationStatus),
+                        userInfo: [NSLocalizedDescriptionKey: "Failed to create zip (ditto exit \(p.terminationStatus))."]
+                    )
+                }
+
+                #if os(macOS)
+                let panel = NSSavePanel()
+                panel.allowedContentTypes = [UTType.zip]
+                panel.canCreateDirectories = true
+                panel.isExtensionHidden = false
+                panel.nameFieldStringValue = tempZipURL.lastPathComponent
+
+                guard panel.runModal() == .OK, let destinationURL = panel.url else {
+                    return
+                }
+
+                try? fm.removeItem(at: destinationURL)
+                try fm.copyItem(at: tempZipURL, to: destinationURL)
+                #endif
+
+                exportedZipAt = now
+            } catch {
+                exportErrorMessage = "Export failed: \(error.localizedDescription)"
+            }
+        }
     }
 
     private var reconnectBackoffUntil: Date? {
