@@ -23,6 +23,11 @@ struct SettingsView: View {
 
     @State private var copiedAt: Date?
 
+    // Test connection
+    @State private var isTestingConnection: Bool = false
+    @State private var testConnectionResult: GatewayTestConnectionPresenter.PresentedResult?
+    @State private var testConnectionAt: Date?
+
     // Auto-apply / undo
     @State private var pendingApplyTask: Task<Void, Never>?
     @State private var lastAppliedAt: Date?
@@ -91,6 +96,11 @@ struct SettingsView: View {
                             .disabled(baseURLValidationMessage(for: draftBaseURL) != nil || tokenValidationMessage(for: draftToken) != nil)
                         }
 
+                        Button("Test connection") {
+                            runTestConnection()
+                        }
+                        .disabled(isTestingConnection || baseURLValidationMessage(for: draftBaseURL) != nil)
+
                         Button("Retry Now") {
                             gateway.retryNow()
                         }
@@ -105,6 +115,16 @@ struct SettingsView: View {
                         .buttonStyle(.link)
 
                         Spacer()
+                    }
+
+                    if isTestingConnection {
+                        Text("Testing connection…")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else if let testConnectionResult, let testConnectionAt {
+                        Text("Test result: \(testConnectionResult.message) (\(Self.uiTimestampFormatter.string(from: testConnectionAt)))")
+                            .font(.caption)
+                            .foregroundStyle(testConnectionResult.kind == .success ? .green : (testConnectionResult.kind == .unknown ? .secondary : .red))
                     }
 
                     if let validationError, hasEditedBaseURL {
@@ -384,6 +404,29 @@ struct SettingsView: View {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: UInt64(hideAfter * 1_000_000_000))
             showAppliedToast = false
+        }
+    }
+
+    private func runTestConnection() {
+        // Don’t start if URL invalid.
+        guard baseURLValidationMessage(for: draftBaseURL) == nil else { return }
+        guard !isTestingConnection else { return }
+
+        isTestingConnection = true
+        testConnectionResult = nil
+        testConnectionAt = nil
+
+        Task { @MainActor in
+            defer { isTestingConnection = false }
+
+            do {
+                try await gateway.testConnection()
+                testConnectionResult = GatewayTestConnectionPresenter.presentSuccess()
+            } catch {
+                testConnectionResult = GatewayTestConnectionPresenter.present(error: error)
+            }
+
+            testConnectionAt = Date()
         }
     }
 
