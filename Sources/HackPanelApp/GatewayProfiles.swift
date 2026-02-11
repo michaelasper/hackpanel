@@ -88,6 +88,37 @@ final class GatewayProfilesStore: ObservableObject {
         persist()
     }
 
+    func updateProfile(_ id: UUID, name: String, baseURLString: String, token: String?) {
+        guard let idx = profiles.firstIndex(where: { $0.id == id }) else { return }
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        profiles[idx].name = trimmedName.isEmpty ? profiles[idx].name : trimmedName
+        profiles[idx].baseURLString = baseURLString
+        if let token {
+            setToken(token, for: id)
+        }
+        persist()
+    }
+
+    /// Deletes a profile. If the deleted profile was active, selects the first remaining profile as active.
+    /// Does nothing if it would delete the last remaining profile.
+    func deleteProfile(_ id: UUID, deleteTokenFromKeychain: Bool = true) {
+        guard profiles.count > 1 else { return }
+        guard let idx = profiles.firstIndex(where: { $0.id == id }) else { return }
+
+        let profile = profiles[idx]
+        profiles.remove(at: idx)
+
+        if deleteTokenFromKeychain {
+            _ = Keychain.delete(account: profile.tokenKeychainAccount)
+        }
+
+        if activeProfileId == id {
+            activeProfileId = profiles.first!.id
+        }
+
+        persist()
+    }
+
     @discardableResult
     func createProfile(name: String, baseURLString: String, token: String) -> GatewayProfile {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
