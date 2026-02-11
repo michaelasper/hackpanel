@@ -1,0 +1,326 @@
+{
+  "project": "Hackpanel",
+  "branchName": "ralph/hackpanel-project-prd",
+  "description": "PRD mirror of GitHub Project #2 issues (non-Done) for AI execution; ordered P0->P1->P2 and Ready-first.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "#70 — P0: Validate Gateway Base URL in Settings (inline errors + disable apply)",
+      "description": "As an operator/developer, I want validate gateway base url in settings (inline errors + disable apply) so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "Base URL must parse as URL, scheme http/https, host present; port optional",
+        "Inline validation message when invalid",
+        "Disable apply/test/reconnect action when invalid",
+        "Default value for fresh install: http://127.0.0.1:18789",
+        "Unit tests cover common valid/invalid inputs",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "ProjectStatus=Ready; Priority=P0;"
+    },
+    {
+      "id": "US-002",
+      "title": "#87 — P0 Slice: Atomic apply of Base URL + Token (single config update)",
+      "description": "As an operator/developer, I want p0 slice: atomic apply of base url + token (single config update) so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "Rapid edits to both fields result in a single reconnect using the latest pair",
+        "No intermediate reconnect using old token/new URL (or vice versa)",
+        "Works for paste operations + fast typing",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "ProjectStatus=Ready; Priority=P0;"
+    },
+    {
+      "id": "US-003",
+      "title": "#88 — P0 Slice: Settings connection status pill + error banner (Retry)",
+      "description": "As an operator/developer, I want p0 slice: settings connection status pill + error banner (retry) so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "Status pill shows: Disconnected / Connecting… / Connected / Error",
+        "Error banner on failure with: short message + Retry button (and optional Diagnostics link)",
+        "Updates live as connection state changes",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "ProjectStatus=Ready; Priority=P0;"
+    },
+    {
+      "id": "US-004",
+      "title": "#77 — Bug: cancel countdownTask on successful connect",
+      "description": "As an operator/developer, I want bug: cancel countdowntask on successful connect so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "When state becomes `.connected`, `countdownTask` is always cancelled and set to nil",
+        "No background updates to countdown after connected",
+        "Add/adjust unit test(s) to cover: failure -> countdown starts -> success -> countdown stops",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "ProjectStatus=In progress; Priority=P0;"
+    },
+    {
+      "id": "US-005",
+      "title": "#86 — P0 Slice: Debounced + validation-gated auto-apply (Settings -> reconnect)",
+      "description": "As an operator/developer, I want p0 slice: debounced + validation-gated auto-apply (settings -> reconnect) so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "Editing Base URL or Token triggers apply after debounce (300–600ms) once valid",
+        "Invalid input never triggers reconnect; inline validation message shown",
+        "Prevent reconnect spam while typing",
+        "No secret leakage (token never logged/displayed)",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "ProjectStatus=In progress; Priority=P0;"
+    },
+    {
+      "id": "US-006",
+      "title": "#27 — Nodes list empty/error states: intentional UI + Open Settings / Retry",
+      "description": "As an operator/developer, I want nodes list empty/error states: intentional ui + open settings / retry so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "\"No gateway\" state on Nodes list with Open Settings + Retry/Refresh.",
+        "\"No nodes\" state on Nodes list with explanation + Refresh.",
+        "Keyboard accessible + VoiceOver labels make sense.",
+        "Styled consistently with Liquid Glass primitives.",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "ProjectStatus=Ready; Priority=P1;"
+    },
+    {
+      "id": "US-007",
+      "title": "#28 — Logs screen (minimal): show recent gateway logs + Copy",
+      "description": "As an operator/developer, I want logs screen (minimal): show recent gateway logs + copy so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "Logs screen shows recent logs (reasonable cap) and scrolls smoothly.",
+        "Disconnected/failed states show actionable guidance (Open Settings / Retry).",
+        "User can copy visible logs.",
+        "No secrets are surfaced in the UI (best-effort; add follow-up issue if needed).",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "ProjectStatus=Ready; Priority=P1;"
+    },
+    {
+      "id": "US-008",
+      "title": "#76 — Chore: rename 'falsey' -> 'falsy' in comment + test",
+      "description": "As an operator/developer, I want chore: rename 'falsey' -> 'falsy' in comment + test so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "Comment and test name updated",
+        "Tests pass",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "ProjectStatus=Backlog; Priority=P1;"
+    },
+    {
+      "id": "US-009",
+      "title": "#78 — Docs: token redaction copy matches behavior (last-4 when available)",
+      "description": "As an operator/developer, I want docs: token redaction copy matches behavior (last-4 when available) so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "UI copy and behavior are consistent",
+        "Add a small unit test table for redactToken (empty, <4, =4, >4)",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "ProjectStatus=Backlog; Priority=P1;"
+    },
+    {
+      "id": "US-010",
+      "title": "#79 — Tests: capture real connect.challenge frame + tighten contract decoding fixture",
+      "description": "As an operator/developer, I want tests: capture real connect.challenge frame + tighten contract decoding fixture so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "Fixture matches real captured frame",
+        "Tests assert exact fields (not vague best-guess)",
+        "Document capture method (short note in the test or fixture README/comment)",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "ProjectStatus=Backlog; Priority=P1;"
+    },
+    {
+      "id": "US-011",
+      "title": "#89 — P0 Follow-up: Undo last config apply",
+      "description": "As an operator/developer, I want p0 follow-up: undo last config apply so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "After a config apply, show an Undo action for a short window",
+        "Undo restores previous config and reconnects",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "ProjectStatus=Backlog; Priority=P1;"
+    },
+    {
+      "id": "US-012",
+      "title": "#30 — Provider/integration health (read-only): list providers + OK/Degraded.",
+      "description": "As an operator/developer, I want provider/integration health (read-only): list providers + ok/degraded. so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "Screen lists providers/integrations with clear status + optional short message.",
+        "Disconnected gateway state is actionable.",
+        "Read-only only (no configuration flows).",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "ProjectStatus=Ready; Priority=P2;"
+    },
+    {
+      "id": "US-013",
+      "title": "#29 — Export diagnostics bundle (zip): logs + redacted config summary (no secrets).",
+      "description": "As an operator/developer, I want export diagnostics bundle (zip): logs + redacted config summary (no secrets). so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "Creates a `.zip` containing: recent logs + redacted settings summary (endpoint, app/OS versions, last error, etc.).",
+        "**No secrets/tokens/PII** in the export (include automated redaction tests).",
+        "User can choose save location + filename.",
+        "Export works when gateway is disconnected (includes whatever logs/diagnostics are available).",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "ProjectStatus=Backlog; Priority=P2;"
+    },
+    {
+      "id": "US-014",
+      "title": "#32 — Auto-refresh tuning + background refresh.",
+      "description": "As an operator/developer, I want auto-refresh tuning + background refresh. so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "Refresh scheduling is centralized and does not spawn duplicate concurrent polls.",
+        "On failures, uses backoff/jitter (or clear policy).",
+        "Background/inactive behavior is defined and implemented (pause or reduce frequency).",
+        "Diagnostics show last refresh attempt + next scheduled refresh (for debugging).",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "ProjectStatus=Backlog; Priority=P2;"
+    },
+    {
+      "id": "US-015",
+      "title": "#33 — Search/sort/pin nodes; per-node detail view.",
+      "description": "As an operator/developer, I want search/sort/pin nodes; per-node detail view. so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "Search filters nodes list by name/id (basic contains match).",
+        "Sort options exist and persist.",
+        "Pin/favorite persists and can be toggled.",
+        "Node detail view shows core metadata (id, name, state, last seen) and is navigable.",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": "ProjectStatus=Backlog; Priority=P2;"
+    },
+    {
+      "id": "US-016",
+      "title": "#34 — Theming/polish (liquid glass refinements) + onboarding flow.",
+      "description": "As an operator/developer, I want theming/polish (liquid glass refinements) + onboarding flow. so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "Liquid Glass styling is consistent across banner/dashboard/nodes/settings.",
+        "First-run guides user to configure gateway endpoint and lands in a healthy state when connected.",
+        "Empty/error states are coherent and actionable.",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": "ProjectStatus=Backlog; Priority=P2;"
+    },
+    {
+      "id": "US-017",
+      "title": "#42 — Process: cross-agent comms on every PR before merge + keep PM↔Designer working agreement discoverable",
+      "description": "As an operator/developer, I want process: cross-agent comms on every pr before merge + keep pm↔designer working agreement discoverable so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "Documented in repo (CONTRIBUTING.md or docs) with the PR-comment template.",
+        "PM↔Designer working agreement/template has a stable link and is referenced from a top-level doc (README/CONTRIBUTING).",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": "ProjectStatus=Backlog; Priority=P2;"
+    },
+    {
+      "id": "US-018",
+      "title": "#44 — Deprioritized: Device identity work (was PR #12)",
+      "description": "As an operator/developer, I want deprioritized: device identity work (was pr #12) so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": "ProjectStatus=Backlog; Priority=P2;"
+    },
+    {
+      "id": "US-019",
+      "title": "#71 — P3: Built-in kanban board for agents",
+      "description": "As an operator/developer, I want built-in kanban board for agents so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "Board view with columns (Backlog/Ready/In progress/In review/Done)",
+        "Items show title, priority, assignee/owner, status",
+        "Can move items between columns (drag/drop or menu)",
+        "Clearly indicates source-of-truth and sync status",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": "ProjectStatus=Backlog; Priority=P2;"
+    },
+    {
+      "id": "US-020",
+      "title": "#72 — P3: Usage graph (activity + throughput)",
+      "description": "As an operator/developer, I want usage graph (activity + throughput) so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "At least one time-series chart (e.g., sessions active, events/min, or requests)",
+        "Time range selector (24h/7d/30d)",
+        "Handles empty/no-data state gracefully",
+        "Performance: doesn't tank the UI; loads asynchronously",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": "ProjectStatus=Backlog; Priority=P2;"
+    },
+    {
+      "id": "US-021",
+      "title": "#73 — P3: Skills section (one-click install from Clawhub)",
+      "description": "As an operator/developer, I want skills section (one-click install from clawhub) so that Hackpanel is easier to run and debug.",
+      "acceptanceCriteria": [
+        "List/search skills (name, description, author)",
+        "One-click install (with confirmation)",
+        "Shows install status + errors",
+        "Works with local OpenClaw gateway auth model",
+        "Typecheck passes",
+        "swift test passes"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": "ProjectStatus=Backlog; Priority=P2;"
+    }
+  ]
+}
