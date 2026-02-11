@@ -14,13 +14,25 @@ final class GatewaySettingsValidatorTests: XCTestCase {
         }
     }
 
-    func testValidateBaseURL_acceptsValidURL_withoutPort() {
+    func testValidateBaseURL_acceptsValidURL_withoutPort_assumesDefaultPort() {
         let result = GatewaySettingsValidator.validateBaseURL("http://127.0.0.1")
         switch result {
         case .success(let url):
             XCTAssertEqual(url.scheme, "http")
             XCTAssertEqual(url.host, "127.0.0.1")
-            XCTAssertNil(url.port)
+            XCTAssertEqual(url.port, 18789)
+        case .failure(let error):
+            XCTFail("Expected success, got failure: \(error.message)")
+        }
+    }
+
+    func testValidateBaseURL_acceptsValidHostnameURL_withPort() {
+        let result = GatewaySettingsValidator.validateBaseURL("https://myhost.ts.net:18789")
+        switch result {
+        case .success(let url):
+            XCTAssertEqual(url.scheme, "https")
+            XCTAssertEqual(url.host, "myhost.ts.net")
+            XCTAssertEqual(url.port, 18789)
         case .failure(let error):
             XCTFail("Expected success, got failure: \(error.message)")
         }

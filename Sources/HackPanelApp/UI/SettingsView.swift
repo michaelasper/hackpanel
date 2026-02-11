@@ -50,7 +50,7 @@ struct SettingsView: View {
                     LabeledContent("Gateway URL") {
                         TextField("", text: $draftBaseURL)
                             .textFieldStyle(.roundedBorder)
-                            .help("Example: \(GatewayDefaults.baseURLString)")
+                            .help("Example: \(GatewayDefaults.baseURLString). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
                             .onChange(of: draftBaseURL) { _, newValue in
                                 hasEditedBaseURL = true
                                 validationError = baseURLValidationMessage(for: newValue)
