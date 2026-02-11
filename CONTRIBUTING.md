@@ -6,6 +6,12 @@
 - For UI changes: include screenshots/screen recording and note accessibility checks.
 - Never commit secrets (tokens/keys), even in fixtures.
 
+
+## Coordination & review
+- Use the reviewer checklist + PR comment template: `Docs/PR_REVIEW.md`.
+- **Before merging any active PR**, leave at least one short **cross-agent comms** PR comment (Context / Change / Risk / Testing / Follow-ups).
+  - See: `Docs/working-agreements/pm-designer.md` (template included).
+
 ## Branch naming
 - `feature/<short-name>`
 - `fix/<short-name>`
