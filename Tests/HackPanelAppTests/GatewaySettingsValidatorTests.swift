@@ -63,10 +63,45 @@ final class GatewaySettingsValidatorTests: XCTestCase {
         XCTAssertFailure(GatewaySettingsValidator.validateBaseURL("http://127.0.0.1:18789#frag"))
     }
 
+    func testValidateToken_allowsEmptyToken() {
+        let result = GatewaySettingsValidator.validateToken("")
+        switch result {
+        case .success(let token):
+            XCTAssertEqual(token, "")
+        case .failure(let error):
+            XCTFail("Expected success, got failure: \(error.message)")
+        }
+    }
+
+    func testValidateToken_trimsLeadingAndTrailingWhitespace() {
+        let result = GatewaySettingsValidator.validateToken("  abc123\n")
+        switch result {
+        case .success(let token):
+            XCTAssertEqual(token, "abc123")
+        case .failure(let error):
+            XCTFail("Expected success, got failure: \(error.message)")
+        }
+    }
+
+    func testValidateToken_rejectsInternalWhitespace() {
+        XCTAssertTokenFailure(GatewaySettingsValidator.validateToken("abc 123"))
+        XCTAssertTokenFailure(GatewaySettingsValidator.validateToken("abc\n123"))
+        XCTAssertTokenFailure(GatewaySettingsValidator.validateToken("abc\t123"))
+    }
+
     private func XCTAssertFailure(_ result: Result<URL, GatewaySettingsValidator.ValidationError>, file: StaticString = #filePath, line: UInt = #line) {
         switch result {
         case .success(let url):
             XCTFail("Expected failure, got success: \(url)", file: file, line: line)
+        case .failure:
+            XCTAssertTrue(true)
+        }
+    }
+
+    private func XCTAssertTokenFailure(_ result: Result<String, GatewaySettingsValidator.ValidationError>, file: StaticString = #filePath, line: UInt = #line) {
+        switch result {
+        case .success(let token):
+            XCTFail("Expected failure, got success: \(token)", file: file, line: line)
         case .failure:
             XCTAssertTrue(true)
         }

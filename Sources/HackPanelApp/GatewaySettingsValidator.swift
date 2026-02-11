@@ -6,6 +6,24 @@ enum GatewaySettingsValidator {
         var errorDescription: String? { message }
     }
 
+    static func normalizeToken(_ raw: String) -> String {
+        raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func validateToken(_ raw: String) -> Result<String, ValidationError> {
+        let trimmed = normalizeToken(raw)
+
+        // Empty token is allowed (gateway may not require auth).
+        guard !trimmed.isEmpty else { return .success("") }
+
+        // Reject internal whitespace/newlines (common copy/paste failure mode).
+        if trimmed.rangeOfCharacter(from: .whitespacesAndNewlines) != nil {
+            return .failure(.init(message: "Token cannot contain spaces or newlines. Remove any whitespace and try again."))
+        }
+
+        return .success(trimmed)
+    }
+
     static func validateBaseURL(_ raw: String) -> Result<URL, ValidationError> {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
