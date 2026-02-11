@@ -47,25 +47,29 @@ struct SettingsView: View {
                             .toggleStyle(.switch)
                     }
 
-                    TextField("Gateway URL", text: $draftBaseURL)
-                        .textFieldStyle(.roundedBorder)
-                        .help("Example: \(GatewayDefaults.baseURLString)")
-                        .onChange(of: draftBaseURL) { _, newValue in
-                            hasEditedBaseURL = true
-                            validationError = baseURLValidationMessage(for: newValue)
-                            scheduleAutoApplyIfNeeded()
-                        }
-                        .onSubmit {
-                            if !gatewayAutoApply {
-                                applyAndReconnect(userInitiated: true)
+                    LabeledContent("Gateway URL") {
+                        TextField("", text: $draftBaseURL)
+                            .textFieldStyle(.roundedBorder)
+                            .help("Example: \(GatewayDefaults.baseURLString)")
+                            .onChange(of: draftBaseURL) { _, newValue in
+                                hasEditedBaseURL = true
+                                validationError = baseURLValidationMessage(for: newValue)
+                                scheduleAutoApplyIfNeeded()
                             }
-                        }
+                            .onSubmit {
+                                if !gatewayAutoApply {
+                                    applyAndReconnect(userInitiated: true)
+                                }
+                            }
+                    }
 
-                    SecureField("Token", text: $draftToken)
-                        .textFieldStyle(.roundedBorder)
-                        .onChange(of: draftToken) { _, _ in
-                            scheduleAutoApplyIfNeeded()
-                        }
+                    LabeledContent("Token") {
+                        SecureField("", text: $draftToken)
+                            .textFieldStyle(.roundedBorder)
+                            .onChange(of: draftToken) { _, _ in
+                                scheduleAutoApplyIfNeeded()
+                            }
+                    }
 
                     HStack {
                         if !gatewayAutoApply {
