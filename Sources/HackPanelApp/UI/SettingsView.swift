@@ -7,6 +7,8 @@ import AppKit
 struct SettingsView: View {
     @ObservedObject var gateway: GatewayConnectionStore
 
+    @StateObject private var profiles = GatewayProfilesStore()
+
     // NOTE: OpenClaw Gateway multiplexes WS + HTTP on the same port (default 18789).
     // HackPanel will eventually use the Gateway WebSocket protocol (not plain REST).
     @AppStorage("gatewayBaseURL") private var gatewayBaseURL: String = GatewayDefaults.baseURLString
@@ -52,6 +54,25 @@ struct SettingsView: View {
 
                         Toggle("Auto-apply", isOn: $gatewayAutoApply)
                             .toggleStyle(.switch)
+                    }
+
+                    Picker("Profile", selection: $profiles.activeProfileId) {
+                        ForEach(profiles.profiles) { profile in
+                            Text(profile.name).tag(profile.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .help("Switch between saved gateway connection profiles. Selecting a profile applies it immediately.")
+                    .onChange(of: profiles.activeProfileId) { _, _ in
+                        // Load profile into drafts and apply immediately.
+                        let p = profiles.activeProfile
+                        draftBaseURL = p.baseURLString
+                        draftToken = profiles.token(for: p.id)
+                        hasEditedBaseURL = false
+                        hasEditedToken = false
+                        validationError = baseURLValidationMessage(for: draftBaseURL)
+                        tokenValidationError = tokenValidationMessage(for: draftToken)
+                        applyAndReconnect(userInitiated: true)
                     }
 
                     LabeledContent("Gateway URL") {
@@ -214,8 +235,10 @@ struct SettingsView: View {
             }
             .padding(24)
             .onAppear {
-                if draftBaseURL.isEmpty { draftBaseURL = gatewayBaseURL }
-                if draftToken.isEmpty { draftToken = gatewayToken }
+                // Initialize drafts from the active profile.
+                let p = profiles.activeProfile
+                if draftBaseURL.isEmpty { draftBaseURL = p.baseURLString }
+                if draftToken.isEmpty { draftToken = profiles.token(for: p.id) }
             }
             .onChange(of: gatewayAutoApply) { _, _ in
                 // If user toggles auto-apply ON while dirty, apply soon.
@@ -385,7 +408,10 @@ struct SettingsView: View {
         // Capture undo snapshot (previous persisted values) before mutating.
         undoSnapshot = (baseURL: gatewayBaseURL, token: gatewayToken)
 
-        // Persist settings.
+        // Persist into the active profile (and keep legacy single-config keys in sync).
+        profiles.updateActiveProfile(baseURLString: trimmedBaseURL)
+        profiles.setToken(trimmedToken, for: profiles.activeProfileId)
+
         gatewayBaseURL = trimmedBaseURL
         gatewayToken = trimmedToken
 
