@@ -46,4 +46,24 @@ enum GatewaySettingsValidator {
 
         return .success(url)
     }
+
+    static func normalizeToken(_ raw: String) -> String {
+        raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Validates and normalizes the token.
+    /// - Returns: `.success(nil)` when the user has not set a token.
+    static func validateToken(_ raw: String) -> Result<String?, ValidationError> {
+        let trimmed = normalizeToken(raw)
+        guard !trimmed.isEmpty else {
+            return .success(nil)
+        }
+
+        // Tokens should be paste-friendly, but internal whitespace/newlines usually indicate a bad copy.
+        if trimmed.rangeOfCharacter(from: .whitespacesAndNewlines) != nil {
+            return .failure(.init(message: "Token must not contain spaces or newlines."))
+        }
+
+        return .success(trimmed)
+    }
 }
