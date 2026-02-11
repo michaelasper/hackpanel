@@ -25,13 +25,22 @@ struct SettingsView: View {
 
     @State private var copiedAt: Date?
 
-    // Profiles: create UI
+    // Profiles: create/edit/delete UI
     @State private var showCreateProfileSheet: Bool = false
     @State private var newProfileName: String = ""
     @State private var newProfileBaseURL: String = GatewayDefaults.baseURLString
     @State private var newProfileToken: String = ""
     @State private var newProfileBaseURLError: String?
     @State private var newProfileTokenError: String?
+
+    @State private var showEditProfileSheet: Bool = false
+    @State private var editProfileName: String = ""
+    @State private var editProfileBaseURL: String = GatewayDefaults.baseURLString
+    @State private var editProfileToken: String = ""
+    @State private var editProfileBaseURLError: String?
+    @State private var editProfileTokenError: String?
+
+    @State private var showDeleteProfileConfirm: Bool = false
 
     // Test connection
     @State private var isTestingConnection: Bool = false
@@ -94,7 +103,34 @@ struct SettingsView: View {
                             showCreateProfileSheet = true
                         }
 
+                        Button("Edit Profile…") {
+                            let p = profiles.activeProfile
+                            editProfileName = p.name
+                            editProfileBaseURL = p.baseURLString
+                            editProfileToken = profiles.token(for: p.id)
+                            editProfileBaseURLError = baseURLValidationMessage(for: editProfileBaseURL)
+                            editProfileTokenError = tokenValidationMessage(for: editProfileToken)
+                            showEditProfileSheet = true
+                        }
+
+                        Button("Delete Profile…") {
+                            showDeleteProfileConfirm = true
+                        }
+                        .disabled(profiles.profiles.count <= 1)
+
                         Spacer()
+                    }
+                    .confirmationDialog(
+                        "Delete gateway profile?",
+                        isPresented: $showDeleteProfileConfirm,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Delete Profile", role: .destructive) {
+                            deleteActiveProfile()
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("This removes the profile from HackPanel. You can recreate it later.")
                     }
 
                     LabeledContent("Gateway URL") {
@@ -269,6 +305,9 @@ struct SettingsView: View {
             .sheet(isPresented: $showCreateProfileSheet) {
                 newProfileSheet
             }
+            .sheet(isPresented: $showEditProfileSheet) {
+                editProfileSheet
+            }
 
             if showAppliedToast {
                 appliedToast
@@ -360,6 +399,108 @@ struct SettingsView: View {
         // createProfile(...) already sets the new profile active.
         _ = created
         showCreateProfileSheet = false
+    }
+
+    private var editProfileSheet: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Edit Gateway Profile")
+                .font(.title2.weight(.semibold))
+
+            Form {
+                Section {
+                    LabeledContent("Name") {
+                        TextField("", text: $editProfileName)
+                            .textFieldStyle(.roundedBorder)
+                    }
+
+                    LabeledContent("Gateway URL") {
+                        TextField("", text: $editProfileBaseURL)
+                            .textFieldStyle(.roundedBorder)
+                            .help("Example: \(GatewayDefaults.baseURLString). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
+                            .onChange(of: editProfileBaseURL) { _, newValue in
+                                editProfileBaseURLError = baseURLValidationMessage(for: newValue)
+                            }
+                    }
+
+                    LabeledContent("Token") {
+                        SecureField("", text: $editProfileToken)
+                            .textFieldStyle(.roundedBorder)
+                            .onChange(of: editProfileToken) { _, newValue in
+                                let normalized = GatewaySettingsValidator.normalizeToken(newValue)
+                                if newValue != normalized {
+                                    editProfileToken = normalized
+                                    return
+                                }
+                                editProfileTokenError = tokenValidationMessage(for: normalized)
+                            }
+                    }
+
+                    if let editProfileBaseURLError {
+                        Text(editProfileBaseURLError)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+
+                    if let editProfileTokenError {
+                        Text(editProfileTokenError)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+
+            HStack {
+                Button("Cancel") {
+                    showEditProfileSheet = false
+                }
+
+                Spacer()
+
+                Button("Save") {
+                    saveEditsToActiveProfile()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(baseURLValidationMessage(for: editProfileBaseURL) != nil || tokenValidationMessage(for: editProfileToken) != nil)
+            }
+        }
+        .padding(20)
+        .frame(minWidth: 520, minHeight: 320)
+    }
+
+    private func saveEditsToActiveProfile() {
+        // This sheet edits the currently selected/active profile.
+        let activeId = profiles.activeProfileId
+
+        editProfileBaseURLError = baseURLValidationMessage(for: editProfileBaseURL)
+        editProfileTokenError = tokenValidationMessage(for: editProfileToken)
+        guard editProfileBaseURLError == nil, editProfileTokenError == nil else { return }
+
+        let trimmedURL = editProfileBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        profiles.updateProfile(activeId, name: editProfileName, baseURLString: trimmedURL, token: editProfileToken)
+
+        // Keep drafts and live connection in sync with the updated active profile.
+        draftBaseURL = trimmedURL
+        draftToken = editProfileToken
+        hasEditedBaseURL = true
+        hasEditedToken = true
+        applyAndReconnect(userInitiated: true)
+
+        showEditProfileSheet = false
+    }
+
+    private func deleteActiveProfile() {
+        let id = profiles.activeProfileId
+        profiles.deleteProfile(id)
+
+        // Load the new active profile into drafts and apply immediately.
+        let p = profiles.activeProfile
+        draftBaseURL = p.baseURLString
+        draftToken = profiles.token(for: p.id)
+        hasEditedBaseURL = true
+        hasEditedToken = true
+        validationError = baseURLValidationMessage(for: draftBaseURL)
+        tokenValidationError = tokenValidationMessage(for: draftToken)
+        applyAndReconnect(userInitiated: true)
     }
 
     private func baseURLValidationMessage(for raw: String) -> String? {
