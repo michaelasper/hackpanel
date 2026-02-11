@@ -88,6 +88,19 @@ final class GatewayProfilesStore: ObservableObject {
         persist()
     }
 
+    @discardableResult
+    func createProfile(name: String, baseURLString: String, token: String) -> GatewayProfile {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let finalName = trimmedName.isEmpty ? "New Profile" : trimmedName
+
+        let profile = GatewayProfile(name: finalName, baseURLString: baseURLString)
+        profiles.append(profile)
+        setToken(token, for: profile.id)
+        activeProfileId = profile.id
+        persist()
+        return profile
+    }
+
     private func persist() {
         Self.saveProfiles(profiles, to: UserDefaults.standard, key: Self.profilesKey)
         UserDefaults.standard.set(activeProfileId.uuidString, forKey: Self.activeIdKey)
