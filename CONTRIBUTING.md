@@ -22,6 +22,10 @@
 - Run `HackPanelApp`.
 - Tests: `swift test`.
 
+### Optional: XcodeBuildMCP (agent build/test feedback loop)
+If you want an AI coding agent to run Xcode builds/tests and return structured failures, set up Sentry’s **XcodeBuildMCP**:
+- `Docs/Tooling/XcodeBuildMCP.md`
+
 ### SPM sanity check (matches CI)
 Run the same commands CI runs:
 
