@@ -118,6 +118,42 @@ enum DiagnosticsFormatter {
         return "***redacted*** (last4: \(last4))"
     }
 
+    /// Best-effort, deterministic redaction pass for logs/diagnostic text that may contain secrets.
+    ///
+    /// Keep this intentionally small and test-backed; it is not meant to be a full PII redaction system.
+    static func redactSecrets(in text: String, gatewayToken: String) -> String {
+        var out = text
+
+        // 1) Exact token match (when known).
+        let token = gatewayToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !token.isEmpty {
+            out = out.replacingOccurrences(of: token, with: "[REDACTED]")
+        }
+
+        // 2) Common header/query patterns.
+        // Authorization: Bearer <value>
+        out = replacingRegex(
+            in: out,
+            pattern: "(?i)(authorization:\\s*bearer\\s+)([^\\s]+)",
+            template: "$1[REDACTED]"
+        )
+
+        // token=<value>
+        out = replacingRegex(
+            in: out,
+            pattern: "(?i)(token=)([^\\s&]+)",
+            template: "$1[REDACTED]"
+        )
+
+        return out
+    }
+
+    private static func replacingRegex(in text: String, pattern: String, template: String) -> String {
+        guard let re = try? NSRegularExpression(pattern: pattern) else { return text }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return re.stringByReplacingMatches(in: text, range: range, withTemplate: template)
+    }
+
     private static func iso8601(_ date: Date) -> String {
         ISO8601DateFormatter().string(from: date)
     }

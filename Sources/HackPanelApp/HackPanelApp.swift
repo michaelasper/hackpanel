@@ -35,7 +35,7 @@ struct HackPanelApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(client: client)
+            RootView(client: client, gatewayToken: gatewayToken)
         }
         .windowStyle(.automatic)
     }

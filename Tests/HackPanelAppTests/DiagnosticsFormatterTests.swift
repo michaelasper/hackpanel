@@ -81,4 +81,25 @@ final class DiagnosticsFormatterTests: XCTestCase {
         XCTAssertTrue(text.contains("Auto-apply: Off"))
         XCTAssertTrue(text.contains("Last error: (none)"))
     }
+
+    func testRedactSecrets_redactsExactTokenAndBearerPatterns() {
+        let token = "super-secret-token-9999"
+        let bearer = "Authorization: Bearer abc.def.ghi"
+        let sample = """
+        ok line
+        token=hello123
+        \(bearer)
+        embedded \(token) token
+        """
+
+        let out = DiagnosticsFormatter.redactSecrets(in: sample, gatewayToken: token)
+
+        XCTAssertFalse(out.contains(token))
+        XCTAssertFalse(out.contains("abc.def.ghi"))
+        XCTAssertFalse(out.contains("token=hello123"))
+        XCTAssertTrue(out.contains("ok line"))
+        XCTAssertTrue(out.contains("Authorization: Bearer [REDACTED]"))
+        XCTAssertTrue(out.contains("token=[REDACTED]"))
+        XCTAssertTrue(out.contains("embedded [REDACTED] token"))
+    }
 }
