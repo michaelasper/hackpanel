@@ -17,7 +17,9 @@ struct SettingsView: View {
     @State private var draftBaseURL: String = ""
     @State private var draftToken: String = ""
     @State private var validationError: String?
+    @State private var tokenValidationError: String?
     @State private var hasEditedBaseURL: Bool = false
+    @State private var hasEditedToken: Bool = false
 
     @State private var copiedAt: Date?
 
@@ -66,7 +68,17 @@ struct SettingsView: View {
                     LabeledContent("Token") {
                         SecureField("", text: $draftToken)
                             .textFieldStyle(.roundedBorder)
-                            .onChange(of: draftToken) { _, _ in
+                            .onChange(of: draftToken) { _, newValue in
+                                hasEditedToken = true
+
+                                // Trim leading/trailing whitespace on edit/paste.
+                                let normalized = GatewaySettingsValidator.normalizeToken(newValue)
+                                if newValue != normalized {
+                                    draftToken = normalized
+                                    return
+                                }
+
+                                tokenValidationError = tokenValidationMessage(for: normalized)
                                 scheduleAutoApplyIfNeeded()
                             }
                     }
@@ -76,7 +88,7 @@ struct SettingsView: View {
                             Button("Apply & Reconnect") {
                                 applyAndReconnect(userInitiated: true)
                             }
-                            .disabled(baseURLValidationMessage(for: draftBaseURL) != nil)
+                            .disabled(baseURLValidationMessage(for: draftBaseURL) != nil || tokenValidationMessage(for: draftToken) != nil)
                         }
 
                         Button("Retry Now") {
@@ -97,6 +109,12 @@ struct SettingsView: View {
 
                     if let validationError, hasEditedBaseURL {
                         Text(validationError)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+
+                    if let tokenValidationError, hasEditedToken {
+                        Text(tokenValidationError)
                             .font(.caption)
                             .foregroundStyle(.red)
                     }
@@ -202,16 +220,29 @@ struct SettingsView: View {
         }
     }
 
+    private func tokenValidationMessage(for raw: String) -> String? {
+        switch GatewaySettingsValidator.validateToken(raw) {
+        case .success:
+            return nil
+        case .failure(let error):
+            return error.message
+        }
+    }
+
     private func scheduleAutoApplyIfNeeded(force: Bool = false) {
         pendingApplyTask?.cancel()
         pendingApplyTask = nil
 
         guard gatewayAutoApply else { return }
 
-        // Only apply when Base URL is valid.
+        // Only apply when Base URL and Token are valid.
         let msg = baseURLValidationMessage(for: draftBaseURL)
         validationError = msg
         guard msg == nil else { return }
+
+        let tokenMsg = tokenValidationMessage(for: draftToken)
+        tokenValidationError = tokenMsg
+        guard tokenMsg == nil else { return }
 
         // Avoid re-applying if nothing changed (unless explicitly forced).
         if !force {
@@ -310,7 +341,16 @@ struct SettingsView: View {
 
     private func applyAndReconnect(userInitiated: Bool) {
         let trimmedBaseURL = draftBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedToken = draftToken.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let trimmedToken: String
+        switch GatewaySettingsValidator.validateToken(draftToken) {
+        case .success(let validated):
+            trimmedToken = validated
+            tokenValidationError = nil
+        case .failure(let error):
+            tokenValidationError = error.message
+            return
+        }
 
         let url: URL
         switch GatewaySettingsValidator.validateBaseURL(trimmedBaseURL) {
