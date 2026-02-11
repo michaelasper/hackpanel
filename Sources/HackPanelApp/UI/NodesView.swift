@@ -49,8 +49,11 @@ struct NodesView: View {
     @EnvironmentObject private var connection: GatewayConnectionStore
     @StateObject private var model: NodesViewModel
 
-    init(gateway: GatewayConnectionStore) {
+    private let onOpenSettings: (() -> Void)?
+
+    init(gateway: GatewayConnectionStore, onOpenSettings: (() -> Void)? = nil) {
         _model = StateObject(wrappedValue: NodesViewModel(gateway: gateway))
+        self.onOpenSettings = onOpenSettings
     }
 
     private var shouldShowGatewayUnavailableState: Bool {
@@ -109,11 +112,17 @@ struct NodesView: View {
                     } description: {
                         Text(gatewayUnavailableDescription)
                     } actions: {
-                        Button("Reconnect") {
+                        if let onOpenSettings {
+                            Button("Open Settings") { onOpenSettings() }
+                                .disabled(model.isLoading)
+                        }
+
+                        Button("Retry") {
                             connection.retryNow()
                             Task { await model.refresh() }
                         }
                         .disabled(model.isLoading)
+                        .accessibilityHint(Text("Retries connecting to the gateway and refreshes the Nodes list"))
                     }
                     .frame(maxWidth: .infinity)
                 }
