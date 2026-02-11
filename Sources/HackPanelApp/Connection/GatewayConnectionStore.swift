@@ -46,6 +46,10 @@ final class GatewayConnectionStore: ObservableObject {
 
     private var consecutiveFailures: Int = 0
 
+    // Coalesce duplicate refresh triggers so we never execute >1 concurrent request per endpoint.
+    private var inFlightStatusTask: Task<GatewayStatus, Error>?
+    private var inFlightNodesTask: Task<[NodeSummary], Error>?
+
     // Tunables
     private let pollIntervalSeconds: TimeInterval = 15
     private let baseBackoffSeconds: TimeInterval = 1
@@ -178,8 +182,8 @@ final class GatewayConnectionStore: ObservableObject {
         // Attempt immediately.
         while !Task.isCancelled {
             do {
-                lastHealthCheckAt = Date()
-                _ = try await client.fetchStatus()
+                // Use the coalesced fetchStatus path so view-initiated refreshes don't cause parallel health checks.
+                _ = try await fetchStatus()
                 consecutiveFailures = 0
                 clearErrorOnSuccess()
                 stopCountdown()
@@ -268,11 +272,29 @@ final class GatewayConnectionStore: ObservableObject {
     }
 
     func fetchStatus() async throws -> GatewayStatus {
-        try await trackCall { try await client.fetchStatus() }
+        if let task = inFlightStatusTask {
+            return try await task.value
+        }
+
+        let task = Task { @MainActor in
+            defer { self.inFlightStatusTask = nil }
+            return try await self.trackCall { try await self.client.fetchStatus() }
+        }
+        inFlightStatusTask = task
+        return try await task.value
     }
 
     func fetchNodes() async throws -> [NodeSummary] {
-        try await trackCall { try await client.fetchNodes() }
+        if let task = inFlightNodesTask {
+            return try await task.value
+        }
+
+        let task = Task { @MainActor in
+            defer { self.inFlightNodesTask = nil }
+            return try await self.trackCall { try await self.client.fetchNodes() }
+        }
+        inFlightNodesTask = task
+        return try await task.value
     }
 
     private func trackCall<T>(_ work: () async throws -> T) async throws -> T {
