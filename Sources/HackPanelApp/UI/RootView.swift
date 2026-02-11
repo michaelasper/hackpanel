@@ -22,7 +22,10 @@ struct RootView: View {
     @StateObject private var gateway: GatewayConnectionStore
     @State private var route: Route? = .overview
 
-    init(client: any GatewayClient) {
+    private let gatewayToken: String
+
+    init(client: any GatewayClient, gatewayToken: String) {
+        self.gatewayToken = gatewayToken
         _gateway = StateObject(wrappedValue: GatewayConnectionStore(client: client))
     }
 
@@ -120,14 +123,22 @@ struct RootView: View {
             }
         }()
 
+        let redactedShortMessage = Self.redactBannerText(shortMessage, gatewayToken: gatewayToken)
+        let redactedFullMessage = Self.redactBannerText(gateway.lastErrorMessage, gatewayToken: gatewayToken)
+
         return ConnectionBannerData(
             stateText: state.displayName,
-            message: shortMessage,
-            fullMessage: gateway.lastErrorMessage,
+            message: redactedShortMessage,
+            fullMessage: redactedFullMessage,
             timestampText: timestampText,
             color: color,
             icon: icon,
             showsOpenSettings: state == .authFailed
         )
+    }
+
+    static func redactBannerText(_ text: String?, gatewayToken: String) -> String? {
+        guard let text, !text.isEmpty else { return text }
+        return DiagnosticsFormatter.redactSecrets(in: text, gatewayToken: gatewayToken)
     }
 }
