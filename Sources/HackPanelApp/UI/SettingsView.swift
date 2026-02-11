@@ -25,6 +25,14 @@ struct SettingsView: View {
 
     @State private var copiedAt: Date?
 
+    // Profiles: create UI
+    @State private var showCreateProfileSheet: Bool = false
+    @State private var newProfileName: String = ""
+    @State private var newProfileBaseURL: String = GatewayDefaults.baseURLString
+    @State private var newProfileToken: String = ""
+    @State private var newProfileBaseURLError: String?
+    @State private var newProfileTokenError: String?
+
     // Test connection
     @State private var isTestingConnection: Bool = false
     @State private var testConnectionResult: GatewayTestConnectionPresenter.PresentedResult?
@@ -73,6 +81,20 @@ struct SettingsView: View {
                         validationError = baseURLValidationMessage(for: draftBaseURL)
                         tokenValidationError = tokenValidationMessage(for: draftToken)
                         applyAndReconnect(userInitiated: true)
+                    }
+
+                    HStack {
+                        Button("New Profile…") {
+                            // Seed from current drafts so users can clone + tweak.
+                            newProfileName = ""
+                            newProfileBaseURL = draftBaseURL.isEmpty ? GatewayDefaults.baseURLString : draftBaseURL
+                            newProfileToken = draftToken
+                            newProfileBaseURLError = baseURLValidationMessage(for: newProfileBaseURL)
+                            newProfileTokenError = tokenValidationMessage(for: newProfileToken)
+                            showCreateProfileSheet = true
+                        }
+
+                        Spacer()
                     }
 
                     LabeledContent("Gateway URL") {
@@ -244,6 +266,9 @@ struct SettingsView: View {
                 // If user toggles auto-apply ON while dirty, apply soon.
                 scheduleAutoApplyIfNeeded(force: true)
             }
+            .sheet(isPresented: $showCreateProfileSheet) {
+                newProfileSheet
+            }
 
             if showAppliedToast {
                 appliedToast
@@ -252,6 +277,89 @@ struct SettingsView: View {
             }
         }
         .animation(.easeInOut(duration: 0.15), value: showAppliedToast)
+    }
+
+    private var newProfileSheet: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("New Gateway Profile")
+                .font(.title2.weight(.semibold))
+
+            Form {
+                Section {
+                    LabeledContent("Name") {
+                        TextField("", text: $newProfileName)
+                            .textFieldStyle(.roundedBorder)
+                    }
+
+                    LabeledContent("Gateway URL") {
+                        TextField("", text: $newProfileBaseURL)
+                            .textFieldStyle(.roundedBorder)
+                            .help("Example: \(GatewayDefaults.baseURLString). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
+                            .onChange(of: newProfileBaseURL) { _, newValue in
+                                newProfileBaseURLError = baseURLValidationMessage(for: newValue)
+                            }
+                    }
+
+                    LabeledContent("Token") {
+                        SecureField("", text: $newProfileToken)
+                            .textFieldStyle(.roundedBorder)
+                            .onChange(of: newProfileToken) { _, newValue in
+                                let normalized = GatewaySettingsValidator.normalizeToken(newValue)
+                                if newValue != normalized {
+                                    newProfileToken = normalized
+                                    return
+                                }
+                                newProfileTokenError = tokenValidationMessage(for: normalized)
+                            }
+                    }
+
+                    if let newProfileBaseURLError {
+                        Text(newProfileBaseURLError)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+
+                    if let newProfileTokenError {
+                        Text(newProfileTokenError)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+
+            HStack {
+                Button("Cancel") {
+                    showCreateProfileSheet = false
+                }
+
+                Spacer()
+
+                Button("Create") {
+                    createProfileFromSheet()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(baseURLValidationMessage(for: newProfileBaseURL) != nil || tokenValidationMessage(for: newProfileToken) != nil)
+            }
+        }
+        .padding(20)
+        .frame(minWidth: 520, minHeight: 320)
+    }
+
+    private func createProfileFromSheet() {
+        // Validate once more to avoid creating broken profiles.
+        newProfileBaseURLError = baseURLValidationMessage(for: newProfileBaseURL)
+        newProfileTokenError = tokenValidationMessage(for: newProfileToken)
+        guard newProfileBaseURLError == nil, newProfileTokenError == nil else { return }
+
+        let created = profiles.createProfile(
+            name: newProfileName,
+            baseURLString: newProfileBaseURL.trimmingCharacters(in: .whitespacesAndNewlines),
+            token: newProfileToken
+        )
+
+        // createProfile(...) already sets the new profile active.
+        _ = created
+        showCreateProfileSheet = false
     }
 
     private func baseURLValidationMessage(for raw: String) -> String? {
