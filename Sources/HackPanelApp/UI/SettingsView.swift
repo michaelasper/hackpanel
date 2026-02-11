@@ -157,7 +157,7 @@ struct SettingsView: View {
                                 .frame(minHeight: 180)
                             }
 
-                            Text("Token is fully redacted (last-4 shown).")
+                            Text("Token is redacted (last-4 shown when available).")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }

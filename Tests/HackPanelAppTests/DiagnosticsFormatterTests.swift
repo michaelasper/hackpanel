@@ -2,11 +2,31 @@ import XCTest
 @testable import HackPanelApp
 
 final class DiagnosticsFormatterTests: XCTestCase {
-    func testRedactToken_doesNotLeakFullToken() {
+    func testRedactToken_table() {
+        struct Case {
+            let input: String
+            let expected: String
+        }
+
+        let cases: [Case] = [
+            .init(input: "", expected: "(empty)"),
+            .init(input: "   ", expected: "(empty)"),
+            .init(input: "a", expected: "***redacted***"),
+            .init(input: "abc", expected: "***redacted***"),
+            .init(input: "abcd", expected: "***redacted*** (last4: abcd)"),
+            .init(input: "abcdef", expected: "***redacted*** (last4: cdef)"),
+        ]
+
+        for c in cases {
+            XCTAssertEqual(DiagnosticsFormatter.redactToken(c.input), c.expected)
+        }
+    }
+
+    func testRedactToken_doesNotLeakFullToken_whenLongerThan4() {
         let token = "abcd-efgh-ijkl-1234"
         let redacted = DiagnosticsFormatter.redactToken(token)
 
-        XCTAssertFalse(redacted.contains(token), "Should never include the full token")
+        XCTAssertFalse(redacted.contains(token), "Should never include the full token when longer than 4")
         XCTAssertTrue(redacted.contains("1234"), "Should include last 4 when possible")
     }
 
