@@ -15,6 +15,9 @@ struct RootView: View {
         case settings
     }
 
+    @AppStorage("gatewayBaseURL") private var gatewayBaseURL: String = GatewayDefaults.baseURLString
+    @AppStorage("hasEverConnectedToGateway") private var hasEverConnectedToGateway: Bool = false
+
     @StateObject private var gateway: GatewayConnectionStore
     @State private var route: Route? = .overview
 
@@ -41,20 +44,36 @@ struct RootView: View {
                 }
                 .navigationSplitViewColumnWidth(min: 180, ideal: 220)
             } detail: {
-                switch route ?? .overview {
-                case .overview:
-                    DashboardView(gateway: gateway)
-                case .nodes:
-                    NodesView(gateway: gateway, onOpenSettings: { route = .settings })
-                case .providers:
-                    ProvidersView(onOpenSettings: { route = .settings })
-                case .settings:
-                    SettingsView(gateway: gateway)
+                if GatewayOnboardingGate.shouldShowOnboarding(
+                    hasEverConnected: hasEverConnectedToGateway,
+                    baseURL: gatewayBaseURL,
+                    connectionState: gateway.state
+                ) {
+                    OnboardingView(
+                        onOpenSettings: { route = .settings },
+                        onReconnect: GatewayOnboardingGate.isBaseURLInvalid(gatewayBaseURL) ? nil : { gateway.retryNow() }
+                    )
+                } else {
+                    switch route ?? .overview {
+                    case .overview:
+                        DashboardView(gateway: gateway)
+                    case .nodes:
+                        NodesView(gateway: gateway, onOpenSettings: { route = .settings })
+                    case .providers:
+                        ProvidersView(onOpenSettings: { route = .settings })
+                    case .settings:
+                        SettingsView(gateway: gateway)
+                    }
                 }
             }
         }
         .task {
             gateway.start()
+        }
+        .onChange(of: gateway.state) { _, newValue in
+            if newValue == .connected {
+                hasEverConnectedToGateway = true
+            }
         }
         .environmentObject(gateway)
         .frame(minWidth: 900, minHeight: 600)
