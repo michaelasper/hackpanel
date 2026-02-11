@@ -44,11 +44,13 @@ struct RootView: View {
                 }
                 .navigationSplitViewColumnWidth(min: 180, ideal: 220)
             } detail: {
-                if GatewayOnboardingGate.shouldShowOnboarding(
+                let shouldShowOnboarding = GatewayOnboardingGate.shouldShowOnboarding(
                     hasEverConnected: hasEverConnectedToGateway,
                     baseURL: gatewayBaseURL,
                     connectionState: gateway.state
-                ) {
+                )
+
+                if shouldShowOnboarding, (route ?? .overview) != .settings {
                     OnboardingView(
                         onOpenSettings: { route = .settings },
                         onReconnect: GatewayOnboardingGate.isBaseURLInvalid(gatewayBaseURL) ? nil : { gateway.retryNow() }
