@@ -43,7 +43,7 @@ struct RootView: View {
                 case .overview:
                     DashboardView(gateway: gateway)
                 case .nodes:
-                    NodesView(gateway: gateway)
+                    NodesView(gateway: gateway, onOpenSettings: { route = .settings })
                 case .settings:
                     SettingsView(gateway: gateway)
                 }
