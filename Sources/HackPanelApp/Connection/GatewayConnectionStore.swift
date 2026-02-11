@@ -66,7 +66,7 @@ final class GatewayConnectionStore: ObservableObject {
     /// Usage:
     /// `HACKPANEL_FORCE_STATE=connected|reconnecting|disconnected|authFailed`
     ///
-    /// This is DEBUG-only and is ignored for empty/falsey values.
+    /// This is DEBUG-only and is ignored for empty/falsy values.
     func applyForcedStateIfPresent(environment: [String: String], now: Date) {
         guard let raw = environment["HACKPANEL_FORCE_STATE"] else { return }
         let forced = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
