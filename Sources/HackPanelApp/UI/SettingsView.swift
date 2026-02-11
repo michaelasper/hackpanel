@@ -17,6 +17,7 @@ struct SettingsView: View {
     @State private var draftBaseURL: String = ""
     @State private var draftToken: String = ""
     @State private var validationError: String?
+    @State private var tokenValidationError: String?
     @State private var hasEditedBaseURL: Bool = false
 
     @State private var copiedAt: Date?
@@ -66,7 +67,15 @@ struct SettingsView: View {
                     LabeledContent("Token") {
                         SecureField("", text: $draftToken)
                             .textFieldStyle(.roundedBorder)
-                            .onChange(of: draftToken) { _, _ in
+                            .onChange(of: draftToken) { _, newValue in
+                                let normalized = GatewaySettingsValidator.normalizeToken(newValue)
+                                if normalized != newValue {
+                                    // Paste-friendly: trim immediately so the stored/used value is predictable.
+                                    draftToken = normalized
+                                    return
+                                }
+
+                                tokenValidationError = tokenValidationMessage(for: normalized)
                                 scheduleAutoApplyIfNeeded()
                             }
                     }
@@ -76,7 +85,7 @@ struct SettingsView: View {
                             Button("Apply & Reconnect") {
                                 applyAndReconnect(userInitiated: true)
                             }
-                            .disabled(baseURLValidationMessage(for: draftBaseURL) != nil)
+                            .disabled(baseURLValidationMessage(for: draftBaseURL) != nil || tokenValidationMessage(for: draftToken) != nil)
                         }
 
                         Button("Retry Now") {
@@ -97,6 +106,12 @@ struct SettingsView: View {
 
                     if let validationError, hasEditedBaseURL {
                         Text(validationError)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+
+                    if let tokenValidationError {
+                        Text(tokenValidationError)
                             .font(.caption)
                             .foregroundStyle(.red)
                     }
@@ -178,6 +193,7 @@ struct SettingsView: View {
             .onAppear {
                 if draftBaseURL.isEmpty { draftBaseURL = gatewayBaseURL }
                 if draftToken.isEmpty { draftToken = gatewayToken }
+                tokenValidationError = tokenValidationMessage(for: draftToken)
             }
             .onChange(of: gatewayAutoApply) { _, _ in
                 // If user toggles auto-apply ON while dirty, apply soon.
@@ -202,6 +218,15 @@ struct SettingsView: View {
         }
     }
 
+    private func tokenValidationMessage(for raw: String) -> String? {
+        switch GatewaySettingsValidator.validateToken(raw) {
+        case .success:
+            return nil
+        case .failure(let error):
+            return error.message
+        }
+    }
+
     private func scheduleAutoApplyIfNeeded(force: Bool = false) {
         pendingApplyTask?.cancel()
         pendingApplyTask = nil
@@ -212,6 +237,11 @@ struct SettingsView: View {
         let msg = baseURLValidationMessage(for: draftBaseURL)
         validationError = msg
         guard msg == nil else { return }
+
+        // Only apply when Token is valid.
+        let tokenMsg = tokenValidationMessage(for: draftToken)
+        tokenValidationError = tokenMsg
+        guard tokenMsg == nil else { return }
 
         // Avoid re-applying if nothing changed (unless explicitly forced).
         if !force {
@@ -302,6 +332,7 @@ struct SettingsView: View {
         draftToken = snap.token
         hasEditedBaseURL = true
         validationError = baseURLValidationMessage(for: draftBaseURL)
+        tokenValidationError = tokenValidationMessage(for: draftToken)
 
         // Undo should immediately restore the previously-applied config and reconnect,
         // regardless of whether auto-apply is enabled.
@@ -310,7 +341,6 @@ struct SettingsView: View {
 
     private func applyAndReconnect(userInitiated: Bool) {
         let trimmedBaseURL = draftBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedToken = draftToken.trimmingCharacters(in: .whitespacesAndNewlines)
 
         let url: URL
         switch GatewaySettingsValidator.validateBaseURL(trimmedBaseURL) {
@@ -322,15 +352,25 @@ struct SettingsView: View {
             return
         }
 
+        let token: String?
+        switch GatewaySettingsValidator.validateToken(draftToken) {
+        case .success(let validated):
+            token = validated
+            tokenValidationError = nil
+        case .failure(let error):
+            tokenValidationError = error.message
+            return
+        }
+
         // Capture undo snapshot (previous persisted values) before mutating.
         undoSnapshot = (baseURL: gatewayBaseURL, token: gatewayToken)
 
         // Persist settings.
         gatewayBaseURL = trimmedBaseURL
-        gatewayToken = trimmedToken
+        gatewayToken = token ?? ""
 
         // Apply immediately to the live connection store.
-        let cfg = GatewayConfiguration(baseURL: url, token: trimmedToken.isEmpty ? nil : trimmedToken)
+        let cfg = GatewayConfiguration(baseURL: url, token: token)
         gateway.updateClient(LiveGatewayClient(configuration: cfg))
 
         // Kick the connection loop immediately so users get fast feedback.
