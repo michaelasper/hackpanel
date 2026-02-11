@@ -11,6 +11,7 @@ struct RootView: View {
     enum Route: Hashable {
         case overview
         case nodes
+        case providers
         case settings
     }
 
@@ -35,6 +36,7 @@ struct RootView: View {
                 List(selection: $route) {
                     NavigationLink("Overview", value: Route.overview)
                     NavigationLink("Nodes", value: Route.nodes)
+                    NavigationLink("Providers", value: Route.providers)
                     NavigationLink("Settings", value: Route.settings)
                 }
                 .navigationSplitViewColumnWidth(min: 180, ideal: 220)
@@ -44,6 +46,8 @@ struct RootView: View {
                     DashboardView(gateway: gateway)
                 case .nodes:
                     NodesView(gateway: gateway, onOpenSettings: { route = .settings })
+                case .providers:
+                    ProvidersView(onOpenSettings: { route = .settings })
                 case .settings:
                     SettingsView(gateway: gateway)
                 }
