@@ -32,6 +32,13 @@ final class GatewayConnectionStore: ObservableObject {
     @Published private(set) var countdownSeconds: Int?
     @Published private(set) var lastHealthCheckAt: Date?
 
+    // Refresh scheduler debug fields (surfaced in Settings → Diagnostics).
+    // Best-effort: meant for operator support/debugging.
+    @Published private(set) var lastRefreshAttemptAt: Date?
+    @Published private(set) var lastRefreshResult: String?
+    @Published private(set) var nextScheduledRefreshAt: Date?
+    @Published private(set) var currentBackoffSeconds: TimeInterval?
+
     /// Best-effort recent log lines for support/diagnostics export.
     ///
     /// Intentionally avoids secrets (token) and avoids full URLs.
@@ -237,6 +244,8 @@ final class GatewayConnectionStore: ObservableObject {
         // Attempt immediately.
         while !Task.isCancelled {
             do {
+                lastRefreshAttemptAt = Date()
+
                 // Use the coalesced fetchStatus path so view-initiated refreshes don't cause parallel health checks.
                 _ = try await fetchStatus()
                 log("monitor: fetchStatus ok")
@@ -246,12 +255,23 @@ final class GatewayConnectionStore: ObservableObject {
                 state = .connected
                 refreshToken = UUID()
 
+                lastRefreshResult = "success"
+                currentBackoffSeconds = nil
+
+                let interval = isRefreshPaused ? tuning.inactivePollIntervalSeconds : tuning.pollIntervalSeconds
+                nextScheduledRefreshAt = Date().addingTimeInterval(interval)
+
                 await sleepUntilNextPoll()
             } catch {
+                lastRefreshAttemptAt = Date()
+                lastRefreshResult = "failure"
+
                 // consecutiveFailures + lastError were already updated by `trackCall` inside `fetchStatus()`.
                 let delay = computeBackoffDelaySeconds(failureCount: consecutiveFailures)
+                currentBackoffSeconds = delay
                 log("monitor: fetchStatus failed; backoff=\(String(format: "%.1f", delay))s")
                 let nextRetryAt = Date().addingTimeInterval(delay)
+                nextScheduledRefreshAt = nextRetryAt
                 state = .reconnecting(nextRetryAt: nextRetryAt)
                 startCountdown(to: nextRetryAt)
 
