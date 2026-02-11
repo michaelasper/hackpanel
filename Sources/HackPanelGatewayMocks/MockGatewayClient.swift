@@ -16,9 +16,9 @@ public struct MockGatewayClient: GatewayClient {
     public func fetchStatus() async throws -> GatewayStatus {
         switch scenario {
         case .demo:
-            return GatewayStatus(ok: true, version: "OpenClaw 2026.x", uptimeSeconds: 12_345)
+            return GatewayStatus(ok: true, version: "OpenClaw 2026.x", build: "dev", commit: "(mock)", uptimeSeconds: 12_345)
         case .gatewayDown:
-            return GatewayStatus(ok: false, version: nil, uptimeSeconds: nil)
+            return GatewayStatus(ok: false, version: nil, build: nil, commit: nil, uptimeSeconds: nil)
         }
     }
 

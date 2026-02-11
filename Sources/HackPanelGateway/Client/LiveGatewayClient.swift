@@ -34,6 +34,8 @@ public struct LiveGatewayClient: GatewayClient {
         return GatewayStatus(
             ok: payload.ok ?? true,
             version: payload.version,
+            build: payload.build,
+            commit: payload.commit,
             uptimeSeconds: payload.uptimeSeconds ?? payload.uptimeMs.map { $0 / 1000.0 }
         )
     }
