@@ -299,11 +299,9 @@ struct SettingsView: View {
         hasEditedBaseURL = true
         validationError = baseURLValidationMessage(for: draftBaseURL)
 
-        if gatewayAutoApply {
-            scheduleAutoApplyIfNeeded(force: true)
-        }
-
-        showAppliedToast = false
+        // Undo should immediately restore the previously-applied config and reconnect,
+        // regardless of whether auto-apply is enabled.
+        applyAndReconnect(userInitiated: true)
     }
 
     private func applyAndReconnect(userInitiated: Bool) {
