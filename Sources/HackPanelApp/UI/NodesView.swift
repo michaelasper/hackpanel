@@ -1,22 +1,50 @@
 import SwiftUI
 import HackPanelGateway
 
+enum NodesSortOption: String, CaseIterable, Sendable {
+    case onlineFirst = "online-first"
+    case name = "name"
+
+    var title: String {
+        switch self {
+        case .onlineFirst: return "Online first"
+        case .name: return "Name"
+        }
+    }
+}
+
 @MainActor
 final class NodesViewModel: ObservableObject {
     @Published var nodes: [NodeSummary] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
 
-    var sortedNodes: [NodeSummary] {
+    nonisolated static func sort(_ nodes: [NodeSummary], by option: NodesSortOption) -> [NodeSummary] {
         nodes.sorted { lhs, rhs in
-            if lhs.state != rhs.state {
-                // Online first, then offline, then unknown.
-                return lhs.state.sortRank < rhs.state.sortRank
+            switch option {
+            case .onlineFirst:
+                if lhs.state != rhs.state {
+                    // Online first, then offline, then unknown.
+                    return lhs.state.sortRank < rhs.state.sortRank
+                }
+                let nameComparison = lhs.name.localizedCaseInsensitiveCompare(rhs.name)
+                if nameComparison != .orderedSame {
+                    return nameComparison == .orderedAscending
+                }
+                // Stable tie-breakers to avoid flicker during refresh.
+                return lhs.id < rhs.id
+
+            case .name:
+                let nameComparison = lhs.name.localizedCaseInsensitiveCompare(rhs.name)
+                if nameComparison != .orderedSame {
+                    return nameComparison == .orderedAscending
+                }
+                // Stable tie-breakers to avoid flicker during refresh.
+                if lhs.state != rhs.state {
+                    return lhs.state.sortRank < rhs.state.sortRank
+                }
+                return lhs.id < rhs.id
             }
-            if lhs.name != rhs.name {
-                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
-            }
-            return lhs.id < rhs.id
         }
     }
 
@@ -49,7 +77,17 @@ struct NodesView: View {
     @EnvironmentObject private var connection: GatewayConnectionStore
     @StateObject private var model: NodesViewModel
 
+    @AppStorage("nodes.sortOption") private var sortOptionRawValue: String = NodesSortOption.onlineFirst.rawValue
+
     private let onOpenSettings: (() -> Void)?
+
+    private var sortOption: NodesSortOption {
+        NodesSortOption(rawValue: sortOptionRawValue) ?? .onlineFirst
+    }
+
+    private var sortedNodes: [NodeSummary] {
+        NodesViewModel.sort(model.nodes, by: sortOption)
+    }
 
     init(gateway: GatewayConnectionStore, onOpenSettings: (() -> Void)? = nil) {
         _model = StateObject(wrappedValue: NodesViewModel(gateway: gateway))
@@ -85,7 +123,20 @@ struct NodesView: View {
             HStack {
                 Text("Nodes")
                     .font(.title2.weight(.semibold))
+
                 Spacer()
+
+                Menu {
+                    Picker("Sort", selection: $sortOptionRawValue) {
+                        ForEach(NodesSortOption.allCases, id: \.rawValue) { option in
+                            Text(option.title).tag(option.rawValue)
+                        }
+                    }
+                } label: {
+                    Label("Sort: \(sortOption.title)", systemImage: "arrow.up.arrow.down")
+                }
+                .disabled(model.isLoading)
+
                 Button {
                     Task { await model.refresh() }
                 } label: {
@@ -140,7 +191,7 @@ struct NodesView: View {
                 }
             } else {
                 GlassSurface {
-                    List(model.sortedNodes) { node in
+                    List(sortedNodes) { node in
                         HStack(alignment: .firstTextBaseline, spacing: 12) {
                             Circle()
                                 .fill(Self.color(for: node.state))
