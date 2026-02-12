@@ -51,4 +51,39 @@ final class SettingsViewRenderingRegressionTests: XCTestCase {
             "Expected SettingsView to use isDraftDirty to disable no-op applies"
         )
     }
+
+    func testSettingsSource_containsDiagnosticsConnectionLastSuccessAndLastError() throws {
+        let settingsViewPath = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent() // .../Tests/HackPanelAppTests
+            .deletingLastPathComponent() // .../Tests
+            .deletingLastPathComponent() // repo root
+            .appendingPathComponent("Sources/HackPanelApp/UI/SettingsView.swift")
+
+        let source = try String(contentsOf: settingsViewPath, encoding: .utf8)
+
+        XCTAssertTrue(
+            source.contains("Section(\"Diagnostics\")"),
+            "Expected SettingsView to contain a Diagnostics section"
+        )
+
+        XCTAssertTrue(
+            source.contains("LabeledContent(\"Connection\")"),
+            "Expected Diagnostics to include a 'Connection' field"
+        )
+
+        XCTAssertTrue(
+            source.contains("LabeledContent(\"Last success\")"),
+            "Expected Diagnostics to include a 'Last success' field"
+        )
+
+        XCTAssertTrue(
+            source.contains("LabeledContent(\"Last error\")"),
+            "Expected Diagnostics to include a 'Last error' field"
+        )
+
+        // Stable accessibility identifiers for future UI tests.
+        XCTAssertTrue(source.contains("settings.diagnostics.connectionState"))
+        XCTAssertTrue(source.contains("settings.diagnostics.lastSuccessAt"))
+        XCTAssertTrue(source.contains("settings.diagnostics.lastError"))
+    }
 }

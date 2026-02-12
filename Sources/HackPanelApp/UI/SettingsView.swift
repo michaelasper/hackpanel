@@ -78,17 +78,6 @@ struct SettingsView: View {
         return df
     }()
 
-    private var normalizedDraftBaseURL: String {
-        draftBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private var normalizedDraftToken: String {
-        draftToken.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private var isDraftDirty: Bool {
-        normalizedDraftBaseURL != gatewayBaseURL || normalizedDraftToken != gatewayToken
-    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -323,11 +312,18 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             LabeledContent("Connection") {
                                 Text(gateway.state.displayName)
+                                    .accessibilityIdentifier("settings.diagnostics.connectionState")
+                            }
+
+                            LabeledContent("Last success") {
+                                Text(gateway.lastSuccessfulHealthCheckAt.map { Self.uiTimestampFormatter.string(from: $0) } ?? "—")
+                                    .accessibilityIdentifier("settings.diagnostics.lastSuccessAt")
                             }
 
                             LabeledContent("Last error") {
                                 Text(gateway.lastErrorMessage ?? "(none)")
                                     .textSelection(.enabled)
+                                    .accessibilityIdentifier("settings.diagnostics.lastError")
                             }
 
                             if let at = gateway.lastErrorAt {
