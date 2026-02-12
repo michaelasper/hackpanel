@@ -78,17 +78,7 @@ struct SettingsView: View {
         return df
     }()
 
-    private var normalizedDraftBaseURL: String {
-        draftBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private var normalizedDraftToken: String {
-        draftToken.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private var isDraftDirty: Bool {
-        normalizedDraftBaseURL != gatewayBaseURL || normalizedDraftToken != gatewayToken
-    }
+    // (Draft dirty-state computed below via GatewaySettingsDraft.differs(fromApplied:))
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -851,7 +841,8 @@ struct SettingsView: View {
         gatewayToken = trimmedToken
 
         // Apply immediately to the live connection store.
-        let cfg = GatewayConfiguration(baseURL: url, token: trimmedToken.isEmpty ? nil : trimmedToken)
+        // Token is required by validation, so always include it in the configuration.
+        let cfg = GatewayConfiguration(baseURL: url, token: trimmedToken)
         gateway.updateClient(LiveGatewayClient(configuration: cfg))
 
         // Kick the connection loop immediately so users get fast feedback.
@@ -903,7 +894,8 @@ struct SettingsView: View {
                     status = try await gateway.testConnection()
                 } else {
                     // Auto-apply OFF: explicitly test the *draft* values without persisting/applying.
-                    let cfg = GatewayConfiguration(baseURL: url, token: token.isEmpty ? nil : token)
+                    // Token is required by validation, so always include it in the configuration.
+                    let cfg = GatewayConfiguration(baseURL: url, token: token)
                     let client = LiveGatewayClient(configuration: cfg)
                     status = try await client.fetchStatus()
                 }
