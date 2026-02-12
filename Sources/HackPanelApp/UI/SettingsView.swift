@@ -166,6 +166,7 @@ struct SettingsView: View {
                     LabeledContent("Token") {
                         SecureField("", text: $draftToken)
                             .textFieldStyle(.roundedBorder)
+                            .accessibilityIdentifier("settings.gatewayToken")
                             .onChange(of: draftToken) { _, newValue in
                                 hasEditedToken = true
 
@@ -192,7 +193,11 @@ struct SettingsView: View {
                         Button("Test connection") {
                             runTestConnection()
                         }
-                        .disabled(isTestingConnection || baseURLValidationMessage(for: draftBaseURL) != nil)
+                        .disabled(
+                            isTestingConnection
+                                || baseURLValidationMessage(for: draftBaseURL) != nil
+                                || tokenValidationMessage(for: draftToken) != nil
+                        )
 
                         Button("Retry Now") {
                             gateway.retryNow()
@@ -246,6 +251,7 @@ struct SettingsView: View {
 
                     if let tokenValidationError, hasEditedToken {
                         Text(tokenValidationError)
+                            .accessibilityIdentifier("settings.gatewayToken.error")
                             .font(.caption)
                             .foregroundStyle(.red)
                     }
@@ -256,7 +262,7 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    Text("HackPanel connects to the OpenClaw Gateway WebSocket RPC endpoint (same port as HTTP; default 18789). Token is optional unless your gateway requires it.")
+                    Text("HackPanel connects to the OpenClaw Gateway WebSocket RPC endpoint (same port as HTTP; default 18789). Token is required to Apply/Test.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -386,6 +392,12 @@ struct SettingsView: View {
                 let p = profiles.activeProfile
                 if draftBaseURL.isEmpty { draftBaseURL = p.baseURLString }
                 if draftToken.isEmpty { draftToken = profiles.token(for: p.id) }
+
+                // Prime validation so required fields show inline errors immediately.
+                validationError = baseURLValidationMessage(for: draftBaseURL)
+                tokenValidationError = tokenValidationMessage(for: draftToken)
+                hasEditedBaseURL = true
+                hasEditedToken = true
             }
             .onChange(of: gatewayAutoApply) { _, _ in
                 // If user toggles auto-apply ON while dirty, apply soon.
