@@ -155,7 +155,7 @@ struct SettingsView: View {
                     LabeledContent("Gateway URL") {
                         TextField("", text: $draftBaseURL)
                             .textFieldStyle(.roundedBorder)
-                            .help("Example: \(GatewayDefaults.baseURLString). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
+                            .help("Example: http(s)://your-gateway-host:\(GatewayDefaults.defaultPort). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
                             .onChange(of: draftBaseURL) { _, newValue in
                                 hasEditedBaseURL = true
                                 validationError = baseURLValidationMessage(for: newValue)
@@ -305,6 +305,35 @@ struct SettingsView: View {
                     Text("HackPanel connects to the OpenClaw Gateway WebSocket RPC endpoint (same port as HTTP; default 18789). Token is required to Apply/Test.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+
+                    if gateway.state != .connected {
+                        GlassSurface {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Not connected to Gateway")
+                                    .font(.subheadline.weight(.semibold))
+
+                                Text(gatewayBaseURL)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .textSelection(.enabled)
+
+                                if let msg = gateway.lastErrorMessage, !msg.isEmpty {
+                                    Text(DiagnosticsFormatter.redactSecrets(in: msg, gatewayToken: gatewayToken))
+                                        .font(.caption)
+                                        .foregroundStyle(.red)
+                                        .textSelection(.enabled)
+                                } else {
+                                    Text("Start the OpenClaw Gateway and verify the URL/token.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(10)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Gateway connection error")
+                    }
                 }
 
                 Section("Diagnostics") {
@@ -321,7 +350,8 @@ struct SettingsView: View {
                             }
 
                             LabeledContent("Last error") {
-                                Text(gateway.lastErrorMessage ?? "(none)")
+                                let msg = gateway.lastErrorMessage ?? "(none)"
+                                Text(DiagnosticsFormatter.redactSecrets(in: msg, gatewayToken: gatewayToken))
                                     .textSelection(.enabled)
                                     .accessibilityIdentifier("settings.diagnostics.lastError")
                             }
@@ -434,6 +464,7 @@ struct SettingsView: View {
                 }
             }
             .padding(24)
+            .navigationTitle("Settings")
             .onAppear {
                 // Initialize drafts from the active profile.
                 let p = profiles.activeProfile
@@ -481,7 +512,7 @@ struct SettingsView: View {
                     LabeledContent("Gateway URL") {
                         TextField("", text: $newProfileBaseURL)
                             .textFieldStyle(.roundedBorder)
-                            .help("Example: \(GatewayDefaults.baseURLString). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
+                            .help("Example: http(s)://your-gateway-host:\(GatewayDefaults.defaultPort). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
                             .onChange(of: newProfileBaseURL) { _, newValue in
                                 newProfileBaseURLError = baseURLValidationMessage(for: newValue)
                             }
@@ -564,7 +595,7 @@ struct SettingsView: View {
                     LabeledContent("Gateway URL") {
                         TextField("", text: $editProfileBaseURL)
                             .textFieldStyle(.roundedBorder)
-                            .help("Example: \(GatewayDefaults.baseURLString). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
+                            .help("Example: http(s)://your-gateway-host:\(GatewayDefaults.defaultPort). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
                             .onChange(of: editProfileBaseURL) { _, newValue in
                                 editProfileBaseURLError = baseURLValidationMessage(for: newValue)
                             }

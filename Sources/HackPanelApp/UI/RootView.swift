@@ -77,9 +77,7 @@ struct RootView: View {
                     case .logs:
                         LogsView(onOpenSettings: { route = .settings })
                     case .settings:
-                        NavigationStack {
-                            SettingsView(gateway: gateway)
-                        }
+                        SettingsView(gateway: gateway)
                     }
                 }
             }
