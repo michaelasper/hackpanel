@@ -434,6 +434,7 @@ struct SettingsView: View {
                 }
             }
             .padding(24)
+            .navigationTitle("Settings")
             .onAppear {
                 // Initialize drafts from the active profile.
                 let p = profiles.activeProfile
