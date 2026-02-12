@@ -72,12 +72,12 @@ final class GatewayConnectionStoreBackoffSchedulerTests: XCTestCase {
         func fetchNodes() async throws -> [NodeSummary] { [] }
     }
 
-    func testMonitorLoop_usesDeterministicBackoffWithJitter_andSetsNextScheduledRefreshAt() async {
+    func testMonitorLoop_usesDeterministicBackoffWithJitter_andSetsNextScheduledRefreshAt() async throws {
         let driver = SleepDriver()
         let clock = Clock(start: Date(timeIntervalSince1970: 0))
 
         // Force jitter to the minimum (0.6) for deterministic expectations.
-        let randomUnit: () -> Double = { 0 }
+        let randomUnit: @Sendable () -> Double = { 0 }
 
         let tuning = GatewayConnectionStore.MonitorTuning(
             pollIntervalSeconds: 99,
@@ -106,34 +106,31 @@ final class GatewayConnectionStoreBackoffSchedulerTests: XCTestCase {
         )
 
         store.start()
-        defer {
-            store.stop()
-            driver.resumeNextSleep()
-        }
+        defer { store.stop() }
 
         let first = await driver.waitForNextSleepRequest()
         XCTAssertEqual(first, 0.6, accuracy: 0.0001)
-        XCTAssertEqual(store.currentBackoffSeconds, 0.6, accuracy: 0.0001)
-        XCTAssertEqual(store.nextScheduledRefreshAt, Date(timeIntervalSince1970: 0.6))
-        driver.resumeNextSleep()
+        XCTAssertEqual(try XCTUnwrap(store.currentBackoffSeconds), 0.6, accuracy: 0.0001)
+        XCTAssertEqual(try XCTUnwrap(store.nextScheduledRefreshAt).timeIntervalSince1970, 0.6, accuracy: 0.0001)
+        await driver.resumeNextSleep()
 
         let second = await driver.waitForNextSleepRequest()
         XCTAssertEqual(second, 1.2, accuracy: 0.0001)
-        XCTAssertEqual(store.currentBackoffSeconds, 1.2, accuracy: 0.0001)
-        XCTAssertEqual(store.nextScheduledRefreshAt, Date(timeIntervalSince1970: 0.6 + 1.2))
-        driver.resumeNextSleep()
+        XCTAssertEqual(try XCTUnwrap(store.currentBackoffSeconds), 1.2, accuracy: 0.0001)
+        XCTAssertEqual(try XCTUnwrap(store.nextScheduledRefreshAt).timeIntervalSince1970, 0.6 + 1.2, accuracy: 0.0001)
+        await driver.resumeNextSleep()
 
         let third = await driver.waitForNextSleepRequest()
         XCTAssertEqual(third, 2.4, accuracy: 0.0001)
-        XCTAssertEqual(store.currentBackoffSeconds, 2.4, accuracy: 0.0001)
-        XCTAssertEqual(store.nextScheduledRefreshAt, Date(timeIntervalSince1970: 0.6 + 1.2 + 2.4))
+        XCTAssertEqual(try XCTUnwrap(store.currentBackoffSeconds), 2.4, accuracy: 0.0001)
+        XCTAssertEqual(try XCTUnwrap(store.nextScheduledRefreshAt).timeIntervalSince1970, 0.6 + 1.2 + 2.4, accuracy: 0.0001)
     }
 
-    func testMonitorLoop_successResetsBackoffAndSchedulesNextPoll() async {
+    func testMonitorLoop_successResetsBackoffAndSchedulesNextPoll() async throws {
         let driver = SleepDriver()
         let clock = Clock(start: Date(timeIntervalSince1970: 0))
 
-        let randomUnit: () -> Double = { 0 }
+        let randomUnit: @Sendable () -> Double = { 0 }
 
         let tuning = GatewayConnectionStore.MonitorTuning(
             pollIntervalSeconds: 5,
@@ -161,19 +158,16 @@ final class GatewayConnectionStoreBackoffSchedulerTests: XCTestCase {
         )
 
         store.start()
-        defer {
-            store.stop()
-            driver.resumeNextSleep()
-        }
+        defer { store.stop() }
 
         let backoff = await driver.waitForNextSleepRequest()
         XCTAssertEqual(backoff, 0.6, accuracy: 0.0001)
-        driver.resumeNextSleep()
+        await driver.resumeNextSleep()
 
         let poll = await driver.waitForNextSleepRequest()
         XCTAssertEqual(poll, 5, accuracy: 0.0001)
         XCTAssertNil(store.currentBackoffSeconds)
         XCTAssertEqual(store.lastRefreshResult, "success")
-        XCTAssertEqual(store.nextScheduledRefreshAt, Date(timeIntervalSince1970: 0.6 + 5))
+        XCTAssertEqual(try XCTUnwrap(store.nextScheduledRefreshAt).timeIntervalSince1970, 0.6 + 5, accuracy: 0.0001)
     }
 }
