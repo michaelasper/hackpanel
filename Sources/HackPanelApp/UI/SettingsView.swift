@@ -155,7 +155,7 @@ struct SettingsView: View {
                     LabeledContent("Gateway URL") {
                         TextField("", text: $draftBaseURL)
                             .textFieldStyle(.roundedBorder)
-                            .help("Example: \(GatewayDefaults.baseURLString). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
+                            .help("Example: http(s)://your-gateway-host:\(GatewayDefaults.defaultPort). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
                             .onChange(of: draftBaseURL) { _, newValue in
                                 hasEditedBaseURL = true
                                 validationError = baseURLValidationMessage(for: newValue)
@@ -511,7 +511,7 @@ struct SettingsView: View {
                     LabeledContent("Gateway URL") {
                         TextField("", text: $newProfileBaseURL)
                             .textFieldStyle(.roundedBorder)
-                            .help("Example: \(GatewayDefaults.baseURLString). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
+                            .help("Example: http(s)://your-gateway-host:\(GatewayDefaults.defaultPort). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
                             .onChange(of: newProfileBaseURL) { _, newValue in
                                 newProfileBaseURLError = baseURLValidationMessage(for: newValue)
                             }
@@ -594,7 +594,7 @@ struct SettingsView: View {
                     LabeledContent("Gateway URL") {
                         TextField("", text: $editProfileBaseURL)
                             .textFieldStyle(.roundedBorder)
-                            .help("Example: \(GatewayDefaults.baseURLString). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
+                            .help("Example: http(s)://your-gateway-host:\(GatewayDefaults.defaultPort). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
                             .onChange(of: editProfileBaseURL) { _, newValue in
                                 editProfileBaseURLError = baseURLValidationMessage(for: newValue)
                             }

@@ -105,5 +105,10 @@ final class SettingsViewRenderingRegressionTests: XCTestCase {
             source.contains("gateway.lastErrorMessage"),
             "Expected SettingsView offline banner to surface gateway.lastErrorMessage"
         )
+
+        XCTAssertFalse(
+            source.contains("127.0.0.1"),
+            "Settings UI should not hardcode localhost examples; it should be neutral for remote/Tailscale setups"
+        )
     }
 }
