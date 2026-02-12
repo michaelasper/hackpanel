@@ -305,6 +305,35 @@ struct SettingsView: View {
                     Text("HackPanel connects to the OpenClaw Gateway WebSocket RPC endpoint (same port as HTTP; default 18789). Token is required to Apply/Test.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+
+                    if gateway.state != .connected {
+                        GlassSurface {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Not connected to Gateway")
+                                    .font(.subheadline.weight(.semibold))
+
+                                Text(gatewayBaseURL)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .textSelection(.enabled)
+
+                                if let msg = gateway.lastErrorMessage, !msg.isEmpty {
+                                    Text(msg)
+                                        .font(.caption)
+                                        .foregroundStyle(.red)
+                                        .textSelection(.enabled)
+                                } else {
+                                    Text("Start the OpenClaw Gateway and verify the URL/token.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(10)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Gateway connection error")
+                    }
                 }
 
                 Section("Diagnostics") {

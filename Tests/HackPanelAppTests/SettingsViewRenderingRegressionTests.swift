@@ -86,4 +86,24 @@ final class SettingsViewRenderingRegressionTests: XCTestCase {
         XCTAssertTrue(source.contains("settings.diagnostics.lastSuccessAt"))
         XCTAssertTrue(source.contains("settings.diagnostics.lastError"))
     }
+
+    func testSettingsSource_rendersGatewayConnectionErrorBannerWhenOffline() throws {
+        let settingsViewPath = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent() // .../Tests/HackPanelAppTests
+            .deletingLastPathComponent() // .../Tests
+            .deletingLastPathComponent() // repo root
+            .appendingPathComponent("Sources/HackPanelApp/UI/SettingsView.swift")
+
+        let source = try String(contentsOf: settingsViewPath, encoding: .utf8)
+
+        XCTAssertTrue(
+            source.contains("Not connected to Gateway"),
+            "Expected SettingsView to render an explicit offline/unreachable gateway banner"
+        )
+
+        XCTAssertTrue(
+            source.contains("gateway.lastErrorMessage"),
+            "Expected SettingsView offline banner to surface gateway.lastErrorMessage"
+        )
+    }
 }
