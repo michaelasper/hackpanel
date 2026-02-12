@@ -78,6 +78,18 @@ struct SettingsView: View {
         return df
     }()
 
+    private var normalizedDraftBaseURL: String {
+        draftBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var normalizedDraftToken: String {
+        draftToken.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var isDraftDirty: Bool {
+        normalizedDraftBaseURL != gatewayBaseURL || normalizedDraftToken != gatewayToken
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
             Form {
@@ -191,7 +203,11 @@ struct SettingsView: View {
                             Button("Apply & Reconnect") {
                                 applyAndReconnect(userInitiated: true)
                             }
-                            .disabled(baseURLValidationMessage(for: draftBaseURL) != nil || tokenValidationMessage(for: draftToken) != nil)
+                            .disabled(
+                                !isDraftDirty ||
+                                    baseURLValidationMessage(for: draftBaseURL) != nil ||
+                                    tokenValidationMessage(for: draftToken) != nil
+                            )
                         }
 
                         Button("Test connection") {
@@ -237,6 +253,12 @@ struct SettingsView: View {
 
                         Spacer()
                     }
+
+                    Text(isDraftDirty ? "Draft has changes" : "No changes")
+                        .font(.caption)
+                        .foregroundStyle(isDraftDirty ? .secondary : .secondary)
+                        .accessibilityLabel(isDraftDirty ? "Draft has changes" : "No changes")
+                        .accessibilityHint("Indicates whether the draft settings differ from the applied settings")
 
                     if isTestingConnection {
                         Text("Testing connection…")
@@ -668,9 +690,7 @@ struct SettingsView: View {
 
         // Avoid re-applying if nothing changed (unless explicitly forced).
         if !force {
-            let trimmedBaseURL = draftBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-            let trimmedToken = draftToken.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmedBaseURL == gatewayBaseURL && trimmedToken == gatewayToken {
+            if !isDraftDirty {
                 return
             }
         }
