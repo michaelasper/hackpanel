@@ -48,6 +48,16 @@ final class NodesViewModel: ObservableObject {
         }
     }
 
+    nonisolated static func filter(_ nodes: [NodeSummary], query rawQuery: String) -> [NodeSummary] {
+        let query = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return nodes }
+
+        return nodes.filter { node in
+            node.name.localizedCaseInsensitiveContains(query)
+                || node.id.localizedCaseInsensitiveContains(query)
+        }
+    }
+
     private let gateway: GatewayConnectionStore
 
     init(gateway: GatewayConnectionStore) {
@@ -76,6 +86,7 @@ struct NodesView: View {
 
     @EnvironmentObject private var connection: GatewayConnectionStore
     @StateObject private var model: NodesViewModel
+    @State private var searchText: String = ""
 
     @AppStorage("nodes.sortOption") private var sortOptionRawValue: String = NodesSortOption.onlineFirst.rawValue
 
@@ -87,6 +98,10 @@ struct NodesView: View {
 
     private var sortedNodes: [NodeSummary] {
         NodesViewModel.sort(model.nodes, by: sortOption)
+    }
+
+    private var visibleNodes: [NodeSummary] {
+        NodesViewModel.filter(sortedNodes, query: searchText)
     }
 
     init(gateway: GatewayConnectionStore, onOpenSettings: (() -> Void)? = nil) {
@@ -189,9 +204,20 @@ struct NodesView: View {
                     }
                     .frame(maxWidth: .infinity)
                 }
+            } else if visibleNodes.isEmpty, !model.isLoading {
+                GlassCard {
+                    ContentUnavailableView {
+                        Label("No matching nodes", systemImage: "magnifyingglass")
+                    } description: {
+                        Text("Try a different search.")
+                    } actions: {
+                        Button("Clear search") { searchText = "" }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
             } else {
                 GlassSurface {
-                    List(sortedNodes) { node in
+                    List(visibleNodes) { node in
                         HStack(alignment: .firstTextBaseline, spacing: 12) {
                             Circle()
                                 .fill(Self.color(for: node.state))
@@ -229,6 +255,7 @@ struct NodesView: View {
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
                 }
+                .searchable(text: $searchText, placement: .automatic, prompt: "Search nodes")
             }
         }
         .padding(AppTheme.Layout.pagePadding)
