@@ -76,6 +76,12 @@ final class GatewayConnectionStore: ObservableObject {
         var inactivePollIntervalSeconds: TimeInterval = 120
         var baseBackoffSeconds: TimeInterval = 1
         var maxBackoffSeconds: TimeInterval = 30
+
+        /// Randomizes backoff delays to avoid sync storms across clients.
+        /// Range is expressed as a multiplier applied to the exponential delay (e.g. 0.6...1.4).
+        var jitterMin: Double = 0.6
+        var jitterMax: Double = 1.4
+
         var errorDedupeWindowSeconds: TimeInterval = 10
         /// Sleep granularity so we can react quickly to active/inactive changes.
         var sleepQuantumSeconds: TimeInterval = 0.25
@@ -85,12 +91,14 @@ final class GatewayConnectionStore: ObservableObject {
 
     private let tuning: MonitorTuning
     private let now: @Sendable () -> Date
+    private let randomUnit: @Sendable () -> Double
     private let sleep: @Sendable (TimeInterval) async -> Void
 
     init(
         client: any GatewayClient,
         tuning: MonitorTuning = MonitorTuning(),
         now: @escaping @Sendable () -> Date = { Date() },
+        randomUnit: @escaping @Sendable () -> Double = { Double.random(in: 0..<1) },
         sleep: @escaping @Sendable (TimeInterval) async -> Void = { seconds in
             try? await Task.sleep(nanoseconds: UInt64(max(0, seconds) * 1_000_000_000))
         }
@@ -98,6 +106,7 @@ final class GatewayConnectionStore: ObservableObject {
         self.client = client
         self.tuning = tuning
         self.now = now
+        self.randomUnit = randomUnit
         self.sleep = sleep
 
         #if DEBUG
@@ -216,7 +225,7 @@ final class GatewayConnectionStore: ObservableObject {
     func retryNow() {
         log("user: retryNow")
         consecutiveFailures = max(consecutiveFailures, 1) // ensure backoff is active
-        state = .reconnecting(nextRetryAt: Date())
+        state = .reconnecting(nextRetryAt: now())
         countdownSeconds = 0
         refreshToken = UUID()
 
@@ -236,7 +245,7 @@ final class GatewayConnectionStore: ObservableObject {
     /// Used by Settings "Test connection" without altering the monitor loop/state.
     func testConnection() async throws -> GatewayStatus {
         log("settings: testConnection")
-        lastHealthCheckAt = Date()
+        lastHealthCheckAt = now()
         return try await client.fetchStatus()
     }
 
@@ -244,7 +253,7 @@ final class GatewayConnectionStore: ObservableObject {
         // Attempt immediately.
         while !Task.isCancelled {
             do {
-                lastRefreshAttemptAt = Date()
+                lastRefreshAttemptAt = now()
 
                 // Use the coalesced fetchStatus path so view-initiated refreshes don't cause parallel health checks.
                 _ = try await fetchStatus()
@@ -259,18 +268,18 @@ final class GatewayConnectionStore: ObservableObject {
                 currentBackoffSeconds = nil
 
                 let interval = isRefreshPaused ? tuning.inactivePollIntervalSeconds : tuning.pollIntervalSeconds
-                nextScheduledRefreshAt = Date().addingTimeInterval(interval)
+                nextScheduledRefreshAt = now().addingTimeInterval(interval)
 
                 await sleepUntilNextPoll()
             } catch {
-                lastRefreshAttemptAt = Date()
+                lastRefreshAttemptAt = now()
                 lastRefreshResult = "failure"
 
                 // consecutiveFailures + lastError were already updated by `trackCall` inside `fetchStatus()`.
                 let delay = computeBackoffDelaySeconds(failureCount: consecutiveFailures)
                 currentBackoffSeconds = delay
                 log("monitor: fetchStatus failed; backoff=\(String(format: "%.1f", delay))s")
-                let nextRetryAt = Date().addingTimeInterval(delay)
+                let nextRetryAt = now().addingTimeInterval(delay)
                 nextScheduledRefreshAt = nextRetryAt
                 state = .reconnecting(nextRetryAt: nextRetryAt)
                 startCountdown(to: nextRetryAt)
@@ -316,8 +325,9 @@ final class GatewayConnectionStore: ObservableObject {
         let capped = min(8, max(1, failureCount))
         let exp = pow(2.0, Double(capped - 1))
         let raw = min(tuning.maxBackoffSeconds, tuning.baseBackoffSeconds * exp)
-        // Jitter in [0.6, 1.4]
-        let jitter = Double.random(in: 0.6...1.4)
+        // Jitter in [jitterMin, jitterMax] (injectable for deterministic tests).
+        let unit = max(0.0, min(1.0, randomUnit()))
+        let jitter = tuning.jitterMin + (tuning.jitterMax - tuning.jitterMin) * unit
         return max(0.5, min(tuning.maxBackoffSeconds, raw * jitter))
     }
 
@@ -355,28 +365,29 @@ final class GatewayConnectionStore: ObservableObject {
     private func emit(error: Error) {
         let message = GatewayErrorPresenter.message(for: error)
         log("error: \(message)")
-        let now = Date()
+        let nowDate = now()
 
         if var current = lastError, current.message == message {
             // Dedupe: do not re-emit identical errors too frequently (prevents banner timestamp spam).
-            if now.timeIntervalSince(current.lastEmittedAt) < tuning.errorDedupeWindowSeconds {
+            if nowDate.timeIntervalSince(current.lastEmittedAt) < tuning.errorDedupeWindowSeconds {
                 return
             }
-            current.lastEmittedAt = now
+            current.lastEmittedAt = nowDate
             lastError = current
             return
         }
 
-        lastError = ConnectionError(message: message, firstSeenAt: now, lastEmittedAt: now)
+        lastError = ConnectionError(message: message, firstSeenAt: nowDate, lastEmittedAt: nowDate)
     }
 
     private func clearErrorOnSuccess() {
         lastError = nil
     }
 
-    private func log(_ message: String, now: Date = Date()) {
+    private func log(_ message: String, at date: Date? = nil) {
         // Keep it deterministic and support-friendly.
-        let line = "\(ISO8601DateFormatter().string(from: now)) \(message)"
+        let nowDate = date ?? now()
+        let line = "\(ISO8601DateFormatter().string(from: nowDate)) \(message)"
         recentLogLines.append(line)
         if recentLogLines.count > maxRecentLogLines {
             recentLogLines.removeFirst(recentLogLines.count - maxRecentLogLines)
@@ -410,7 +421,7 @@ final class GatewayConnectionStore: ObservableObject {
     }
 
     private func trackCall<T>(_ work: () async throws -> T) async throws -> T {
-        lastHealthCheckAt = Date()
+        lastHealthCheckAt = now()
         do {
             let value = try await work()
             consecutiveFailures = 0
