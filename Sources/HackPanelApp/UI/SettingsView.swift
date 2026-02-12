@@ -59,6 +59,10 @@ struct SettingsView: View {
     @State private var undoSnapshot: (baseURL: String, token: String)?
     @State private var showAppliedToast: Bool = false
 
+    // Reset draft
+    @State private var showResetDraftConfirm: Bool = false
+    @State private var resetDraftInfoMessage: String?
+
     private static let uiTimestampFormatter: DateFormatter = {
         let df = DateFormatter()
         df.dateStyle = .medium
@@ -199,6 +203,25 @@ struct SettingsView: View {
                         }
                         .buttonStyle(.borderless)
 
+                        if isDraftDirty {
+                            Button("Reset Changes") {
+                                showResetDraftConfirm = true
+                            }
+                            .buttonStyle(.link)
+                            .confirmationDialog(
+                                "Reset changes?",
+                                isPresented: $showResetDraftConfirm,
+                                titleVisibility: .visible
+                            ) {
+                                Button("Reset to Applied", role: .destructive) {
+                                    resetDraftToApplied()
+                                }
+                                Button("Cancel", role: .cancel) {}
+                            } message: {
+                                Text("This will discard your unsaved edits and restore the last applied settings.")
+                            }
+                        }
+
                         Button("Reset to Default") {
                             draftBaseURL = GatewayDefaults.baseURLString
                             hasEditedBaseURL = true
@@ -248,6 +271,12 @@ struct SettingsView: View {
                         Text(tokenValidationError)
                             .font(.caption)
                             .foregroundStyle(.red)
+                    }
+
+                    if let resetDraftInfoMessage {
+                        Text(resetDraftInfoMessage)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
 
                     if gatewayAutoApply {
@@ -702,6 +731,12 @@ struct SettingsView: View {
         .frame(maxWidth: 420)
     }
 
+    private var isDraftDirty: Bool {
+        let draft = GatewaySettingsDraft(baseURL: draftBaseURL, token: draftToken)
+        let applied = GatewaySettingsDraft(baseURL: gatewayBaseURL, token: gatewayToken)
+        return draft.differs(fromApplied: applied)
+    }
+
     private var canUndo: Bool {
         guard undoSnapshot != nil else { return false }
         guard let lastAppliedAt else { return false }
@@ -718,6 +753,36 @@ struct SettingsView: View {
         // Undo should immediately restore the previously-applied config and reconnect,
         // regardless of whether auto-apply is enabled.
         applyAndReconnect(userInitiated: true)
+    }
+
+    private func resetDraftToApplied() {
+        pendingApplyTask?.cancel()
+        pendingApplyTask = nil
+
+        var draft = GatewaySettingsDraft(baseURL: draftBaseURL, token: draftToken)
+        let applied = GatewaySettingsDraft(baseURL: gatewayBaseURL, token: gatewayToken)
+
+        let outcome = draft.reset(toApplied: applied, defaultBaseURL: GatewayDefaults.baseURLString)
+
+        draftBaseURL = draft.baseURL
+        draftToken = draft.token
+
+        hasEditedBaseURL = false
+        hasEditedToken = false
+        validationError = baseURLValidationMessage(for: draftBaseURL)
+        tokenValidationError = tokenValidationMessage(for: draftToken)
+
+        switch outcome {
+        case .resetToApplied:
+            resetDraftInfoMessage = "Restored last applied settings."
+        case .resetToDefaultBaseURL:
+            resetDraftInfoMessage = "Applied settings were missing; restored defaults."
+        }
+
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 4 * 1_000_000_000)
+            resetDraftInfoMessage = nil
+        }
     }
 
     private func applyAndReconnect(userInitiated: Bool) {
