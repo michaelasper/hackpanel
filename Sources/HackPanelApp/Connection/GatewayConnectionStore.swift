@@ -30,7 +30,8 @@ final class GatewayConnectionStore: ObservableObject {
     @Published private(set) var state: State = .disconnected
     @Published private(set) var lastError: ConnectionError?
     @Published private(set) var countdownSeconds: Int?
-    @Published private(set) var lastHealthCheckAt: Date?
+    @Published@Published private(set) var lastHealthCheckAt: Date?
+    @Published private(set) var lastSuccessAt: Date?
 
     // Refresh scheduler debug fields (surfaced in Settings → Diagnostics).
     // Best-effort: meant for operator support/debugging.
@@ -413,6 +414,7 @@ final class GatewayConnectionStore: ObservableObject {
         lastHealthCheckAt = Date()
         do {
             let value = try await work()
+            lastSuccessAt = Date()
             consecutiveFailures = 0
             clearErrorOnSuccess()
             stopCountdown()
