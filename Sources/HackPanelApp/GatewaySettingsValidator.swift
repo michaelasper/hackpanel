@@ -13,8 +13,10 @@ enum GatewaySettingsValidator {
     static func validateToken(_ raw: String) -> Result<String, ValidationError> {
         let trimmed = normalizeToken(raw)
 
-        // Empty token is allowed (gateway may not require auth).
-        guard !trimmed.isEmpty else { return .success("") }
+        // Token is required for Settings Apply/Test to avoid confusing no-op connection attempts.
+        guard !trimmed.isEmpty else {
+            return .failure(.init(message: "Token is required."))
+        }
 
         // Reject internal whitespace/newlines (common copy/paste failure mode).
         if trimmed.rangeOfCharacter(from: .whitespacesAndNewlines) != nil {

@@ -63,14 +63,9 @@ final class GatewaySettingsValidatorTests: XCTestCase {
         XCTAssertFailure(GatewaySettingsValidator.validateBaseURL("http://127.0.0.1:18789#frag"))
     }
 
-    func testValidateToken_allowsEmptyToken() {
-        let result = GatewaySettingsValidator.validateToken("")
-        switch result {
-        case .success(let token):
-            XCTAssertEqual(token, "")
-        case .failure(let error):
-            XCTFail("Expected success, got failure: \(error.message)")
-        }
+    func testValidateToken_rejectsEmptyToken() {
+        XCTAssertTokenFailure(GatewaySettingsValidator.validateToken(""))
+        XCTAssertTokenFailure(GatewaySettingsValidator.validateToken("   \n"))
     }
 
     func testValidateToken_trimsLeadingAndTrailingWhitespace() {
