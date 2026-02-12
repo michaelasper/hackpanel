@@ -78,17 +78,6 @@ struct SettingsView: View {
         return df
     }()
 
-    private var normalizedDraftBaseURL: String {
-        draftBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private var normalizedDraftToken: String {
-        draftToken.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private var isDraftDirty: Bool {
-        normalizedDraftBaseURL != gatewayBaseURL || normalizedDraftToken != gatewayToken
-    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -166,7 +155,6 @@ struct SettingsView: View {
                     LabeledContent("Gateway URL") {
                         TextField("", text: $draftBaseURL)
                             .textFieldStyle(.roundedBorder)
-                            .help("Example: \(GatewayDefaults.baseURLString). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
                             .onChange(of: draftBaseURL) { _, newValue in
                                 hasEditedBaseURL = true
                                 validationError = baseURLValidationMessage(for: newValue)
@@ -178,6 +166,11 @@ struct SettingsView: View {
                                 }
                             }
                     }
+
+                    Text("Format: http(s)://host[:port] (example: \(GatewayDefaults.baseURLString)). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
+                        .accessibilityIdentifier("settings.gatewayBaseURL.help")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
 
                     LabeledContent("Token") {
                         SecureField("", text: $draftToken)
@@ -197,6 +190,11 @@ struct SettingsView: View {
                                 scheduleAutoApplyIfNeeded()
                             }
                     }
+
+                    Text("Get this from your OpenClaw Gateway UI. Token is required for Apply/Test.")
+                        .accessibilityIdentifier("settings.gatewayToken.help")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
 
                     HStack {
                         if !gatewayAutoApply {
@@ -290,6 +288,7 @@ struct SettingsView: View {
 
                     if let validationError, hasEditedBaseURL {
                         Text(validationError)
+                            .accessibilityIdentifier("settings.gatewayBaseURL.error")
                             .font(.caption)
                             .foregroundStyle(.red)
                     }
