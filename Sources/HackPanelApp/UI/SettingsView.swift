@@ -323,11 +323,18 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             LabeledContent("Connection") {
                                 Text(gateway.state.displayName)
+                                    .accessibilityIdentifier("settings.diagnostics.connectionState")
+                            }
+
+                            LabeledContent("Last success") {
+                                Text(gateway.lastSuccessfulHealthCheckAt.map { Self.uiTimestampFormatter.string(from: $0) } ?? "—")
+                                    .accessibilityIdentifier("settings.diagnostics.lastSuccessAt")
                             }
 
                             LabeledContent("Last error") {
                                 Text(gateway.lastErrorMessage ?? "(none)")
                                     .textSelection(.enabled)
+                                    .accessibilityIdentifier("settings.diagnostics.lastError")
                             }
 
                             if let at = gateway.lastErrorAt {

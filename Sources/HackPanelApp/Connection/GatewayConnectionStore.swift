@@ -31,6 +31,7 @@ final class GatewayConnectionStore: ObservableObject {
     @Published private(set) var lastError: ConnectionError?
     @Published private(set) var countdownSeconds: Int?
     @Published private(set) var lastHealthCheckAt: Date?
+    @Published private(set) var lastSuccessfulHealthCheckAt: Date?
 
     // Refresh scheduler debug fields (surfaced in Settings → Diagnostics).
     // Best-effort: meant for operator support/debugging.
@@ -246,7 +247,9 @@ final class GatewayConnectionStore: ObservableObject {
     func testConnection() async throws -> GatewayStatus {
         log("settings: testConnection")
         lastHealthCheckAt = now()
-        return try await client.fetchStatus()
+        let status = try await client.fetchStatus()
+        lastSuccessfulHealthCheckAt = now()
+        return status
     }
 
     private func runMonitorLoop() async {
@@ -424,6 +427,7 @@ final class GatewayConnectionStore: ObservableObject {
         lastHealthCheckAt = now()
         do {
             let value = try await work()
+            lastSuccessfulHealthCheckAt = Date()
             consecutiveFailures = 0
             clearErrorOnSuccess()
             stopCountdown()
