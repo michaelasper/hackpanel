@@ -78,18 +78,6 @@ struct SettingsView: View {
         return df
     }()
 
-    private var normalizedDraftBaseURL: String {
-        draftBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private var normalizedDraftToken: String {
-        draftToken.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private var isDraftDirty: Bool {
-        normalizedDraftBaseURL != gatewayBaseURL || normalizedDraftToken != gatewayToken
-    }
-
     var body: some View {
         ZStack(alignment: .bottom) {
             Form {
