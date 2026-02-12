@@ -318,7 +318,7 @@ struct SettingsView: View {
                                     .textSelection(.enabled)
 
                                 if let msg = gateway.lastErrorMessage, !msg.isEmpty {
-                                    Text(msg)
+                                    Text(DiagnosticsFormatter.redactSecrets(in: msg, gatewayToken: gatewayToken))
                                         .font(.caption)
                                         .foregroundStyle(.red)
                                         .textSelection(.enabled)
@@ -350,7 +350,8 @@ struct SettingsView: View {
                             }
 
                             LabeledContent("Last error") {
-                                Text(gateway.lastErrorMessage ?? "(none)")
+                                let msg = gateway.lastErrorMessage ?? "(none)"
+                                Text(DiagnosticsFormatter.redactSecrets(in: msg, gatewayToken: gatewayToken))
                                     .textSelection(.enabled)
                                     .accessibilityIdentifier("settings.diagnostics.lastError")
                             }

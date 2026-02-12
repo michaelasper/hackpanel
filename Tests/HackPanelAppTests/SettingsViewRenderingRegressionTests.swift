@@ -102,8 +102,8 @@ final class SettingsViewRenderingRegressionTests: XCTestCase {
         )
 
         XCTAssertTrue(
-            source.contains("gateway.lastErrorMessage"),
-            "Expected SettingsView offline banner to surface gateway.lastErrorMessage"
+            source.contains("DiagnosticsFormatter.redactSecrets"),
+            "Expected SettingsView offline banner to redact gateway.lastErrorMessage via DiagnosticsFormatter.redactSecrets"
         )
 
         XCTAssertFalse(
