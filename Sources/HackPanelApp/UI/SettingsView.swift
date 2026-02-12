@@ -27,6 +27,8 @@ struct SettingsView: View {
     @State private var copiedAt: Date?
     @State private var copiedSummaryAt: Date?
 
+    @State private var isTokenRevealed: Bool = false
+
     @State private var exportedZipAt: Date?
     @State private var exportErrorMessage: String?
 
@@ -168,9 +170,17 @@ struct SettingsView: View {
                     }
 
                     LabeledContent("Token") {
-                        SecureField("", text: $draftToken)
+                        HStack(spacing: 8) {
+                            Group {
+                                if isTokenRevealed {
+                                    TextField("", text: $draftToken)
+                                } else {
+                                    SecureField("", text: $draftToken)
+                                }
+                            }
                             .textFieldStyle(.roundedBorder)
                             .accessibilityIdentifier("settings.gatewayToken")
+                            .applyTokenEntryTraits()
                             .onChange(of: draftToken) { _, newValue in
                                 hasEditedToken = true
 
@@ -184,6 +194,26 @@ struct SettingsView: View {
                                 tokenValidationError = tokenValidationMessage(for: normalized)
                                 scheduleAutoApplyIfNeeded()
                             }
+
+                            Button {
+                                isTokenRevealed.toggle()
+                            } label: {
+                                Text(isTokenRevealed ? "Hide" : "Show")
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityIdentifier("settings.gatewayToken.reveal")
+                            .accessibilityLabel(isTokenRevealed ? "Hide token" : "Show token")
+
+                            Button {
+                                copyToPasteboard(draftToken)
+                            } label: {
+                                Text("Copy")
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityIdentifier("settings.gatewayToken.copy")
+                            .accessibilityLabel("Copy token")
+                            .disabled(draftToken.isEmpty)
+                        }
                     }
 
                     HStack {
@@ -1039,6 +1069,19 @@ struct SettingsView: View {
         #if os(macOS)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
+        #endif
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyTokenEntryTraits() -> some View {
+        #if os(iOS)
+        self
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled(true)
+        #else
+        self
         #endif
     }
 }
