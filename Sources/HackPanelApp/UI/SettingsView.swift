@@ -270,7 +270,7 @@ struct SettingsView: View {
                             }
 
                             LabeledContent("Last success") {
-                                Text(gateway.lastSuccessAt.map { Self.uiTimestampFormatter.string(from: -e) } ?? "—")
+                                Text(gateway.lastSuccessAt.map { Self.uiTimestampFormatter.string(from: $0) } ?? "—")
                                     .accessibilityIdentifier("settings.diagnostics.lastSuccess")
                             }
 
