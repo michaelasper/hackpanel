@@ -26,4 +26,29 @@ final class SettingsViewRenderingRegressionTests: XCTestCase {
             "Expected SettingsView to contain the 'Token' label"
         )
     }
+
+    func testSettingsSource_containsDraftDirtyStateAndDisablesNoOpApply() throws {
+        let settingsViewPath = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent() // .../Tests/HackPanelAppTests
+            .deletingLastPathComponent() // .../Tests
+            .deletingLastPathComponent() // repo root
+            .appendingPathComponent("Sources/HackPanelApp/UI/SettingsView.swift")
+
+        let source = try String(contentsOf: settingsViewPath, encoding: .utf8)
+
+        XCTAssertTrue(
+            source.contains("isDraftDirty"),
+            "Expected SettingsView to define an isDraftDirty flag"
+        )
+
+        XCTAssertTrue(
+            source.contains("Draft has changes") && source.contains("No changes"),
+            "Expected SettingsView to render draft dirty-state text"
+        )
+
+        XCTAssertTrue(
+            source.contains("!isDraftDirty"),
+            "Expected SettingsView to use isDraftDirty to disable no-op applies"
+        )
+    }
 }
