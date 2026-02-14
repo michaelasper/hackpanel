@@ -87,6 +87,26 @@ final class SettingsViewRenderingRegressionTests: XCTestCase {
         XCTAssertTrue(source.contains("settings.diagnostics.lastError"))
     }
 
+    func testSettingsSource_containsClearActionsForGatewayURLAndToken() throws {
+        let settingsViewPath = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent() // .../Tests/HackPanelAppTests
+            .deletingLastPathComponent() // .../Tests
+            .deletingLastPathComponent() // repo root
+            .appendingPathComponent("Sources/HackPanelApp/UI/SettingsView.swift")
+
+        let source = try String(contentsOf: settingsViewPath, encoding: .utf8)
+
+        XCTAssertTrue(
+            source.contains("if !draftBaseURL.isEmpty") && source.contains("Clear Gateway URL"),
+            "Expected SettingsView to conditionally show a clear action for Gateway URL with an explicit accessibility label"
+        )
+
+        XCTAssertTrue(
+            source.contains("if !draftToken.isEmpty") && source.contains("Clear Token"),
+            "Expected SettingsView to conditionally show a clear action for Token with an explicit accessibility label"
+        )
+    }
+
     func testSettingsSource_rendersGatewayConnectionErrorBannerWhenOffline() throws {
         let settingsViewPath = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent() // .../Tests/HackPanelAppTests
