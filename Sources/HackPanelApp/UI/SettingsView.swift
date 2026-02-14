@@ -153,38 +153,58 @@ struct SettingsView: View {
                     }
 
                     LabeledContent("Gateway URL") {
-                        TextField("", text: $draftBaseURL)
-                            .textFieldStyle(.roundedBorder)
-                            .help("Example: http(s)://your-gateway-host:\(GatewayDefaults.defaultPort). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
-                            .onChange(of: draftBaseURL) { _, newValue in
-                                hasEditedBaseURL = true
-                                validationError = baseURLValidationMessage(for: newValue)
-                                scheduleAutoApplyIfNeeded()
-                            }
-                            .onSubmit {
-                                if !gatewayAutoApply {
-                                    applyAndReconnect(userInitiated: true)
+                        HStack(spacing: 8) {
+                            TextField("", text: $draftBaseURL)
+                                .textFieldStyle(.roundedBorder)
+                                .help("Example: http(s)://your-gateway-host:\(GatewayDefaults.defaultPort). If you omit a port, HackPanel assumes :\(GatewayDefaults.defaultPort).")
+                                .onChange(of: draftBaseURL) { _, newValue in
+                                    hasEditedBaseURL = true
+                                    validationError = baseURLValidationMessage(for: newValue)
+                                    scheduleAutoApplyIfNeeded()
                                 }
+                                .onSubmit {
+                                    if !gatewayAutoApply {
+                                        applyAndReconnect(userInitiated: true)
+                                    }
+                                }
+
+                            if !draftBaseURL.isEmpty {
+                                Button("Clear") {
+                                    clearDraftBaseURL()
+                                }
+                                .buttonStyle(.borderless)
+                                .accessibilityLabel("Clear Gateway URL")
                             }
+                        }
                     }
 
                     LabeledContent("Token") {
-                        SecureField("", text: $draftToken)
-                            .textFieldStyle(.roundedBorder)
-                            .accessibilityIdentifier("settings.gatewayToken")
-                            .onChange(of: draftToken) { _, newValue in
-                                hasEditedToken = true
+                        HStack(spacing: 8) {
+                            SecureField("", text: $draftToken)
+                                .textFieldStyle(.roundedBorder)
+                                .accessibilityIdentifier("settings.gatewayToken")
+                                .onChange(of: draftToken) { _, newValue in
+                                    hasEditedToken = true
 
-                                // Trim leading/trailing whitespace on edit/paste.
-                                let normalized = GatewaySettingsValidator.normalizeToken(newValue)
-                                if newValue != normalized {
-                                    draftToken = normalized
-                                    return
+                                    // Trim leading/trailing whitespace on edit/paste.
+                                    let normalized = GatewaySettingsValidator.normalizeToken(newValue)
+                                    if newValue != normalized {
+                                        draftToken = normalized
+                                        return
+                                    }
+
+                                    tokenValidationError = tokenValidationMessage(for: normalized)
+                                    scheduleAutoApplyIfNeeded()
                                 }
 
-                                tokenValidationError = tokenValidationMessage(for: normalized)
-                                scheduleAutoApplyIfNeeded()
+                            if !draftToken.isEmpty {
+                                Button("Clear") {
+                                    clearDraftToken()
+                                }
+                                .buttonStyle(.borderless)
+                                .accessibilityLabel("Clear Token")
                             }
+                        }
                     }
 
                     HStack {
@@ -698,6 +718,22 @@ struct SettingsView: View {
         case .failure(let error):
             return error.message
         }
+    }
+
+    private func clearDraftBaseURL() {
+        guard !draftBaseURL.isEmpty else { return }
+        hasEditedBaseURL = true
+        draftBaseURL = ""
+        validationError = baseURLValidationMessage(for: draftBaseURL)
+        scheduleAutoApplyIfNeeded()
+    }
+
+    private func clearDraftToken() {
+        guard !draftToken.isEmpty else { return }
+        hasEditedToken = true
+        draftToken = ""
+        tokenValidationError = tokenValidationMessage(for: draftToken)
+        scheduleAutoApplyIfNeeded()
     }
 
     private func scheduleAutoApplyIfNeeded(force: Bool = false) {
